@@ -18,6 +18,6 @@ export const itemDropConfig = {
   firstDropMs: 4_000,
   intervalMinMs: 5_000,
   intervalRandomMs: 3_000,
-  fallSpeed: 95,
+  fallSpeed: 190,
   pickupRadius: 25,
 } as const;

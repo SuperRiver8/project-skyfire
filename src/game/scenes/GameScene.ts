@@ -26,6 +26,7 @@ import { ShieldAura } from '../ui/ShieldAura';
 import { DebugOverlay } from '../ui/DebugOverlay';
 import { Random } from '../utils/Random';
 import { LevelBackground } from '../visuals/LevelBackground';
+import { playVictoryBlessings } from '../visuals/VictoryBlessings';
 import type { ResultData } from './ResultScene';
 import {
   generateUpgrades,
@@ -573,13 +574,15 @@ export class GameScene extends Phaser.Scene {
       save.stats.bossesKilled += 1;
       manager.save(save);
       const runState = this.snapshotRun();
-      queueMicrotask(() =>
+      playVictoryBlessings(this, this.levelId, () =>
         this.scene.start('GameScene', { levelId: this.levelId + 1, runState }),
       );
       return;
     }
     const result = this.result(true);
-    queueMicrotask(() => this.scene.start('ResultScene', result));
+    playVictoryBlessings(this, this.levelId, () =>
+      this.scene.start('ResultScene', result),
+    );
   }
 
   private snapshotRun(): RunState {

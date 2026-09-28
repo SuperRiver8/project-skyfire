@@ -139,7 +139,6 @@ export class ItemManager {
     switch (id) {
       case 'attack_core':
         this.stats.attackCores = Math.min(5, this.stats.attackCores + 1);
-        this.aircraft.flashCore();
         maxed = this.stats.attackCores === 5;
         message = `攻击核心 ${maxed ? 'MAX' : `Lv.${this.stats.attackCores}`}  伤害 +12%`;
         if (this.stats.firepowerOverload) message += '  火力过载';
@@ -286,7 +285,6 @@ export class ItemManager {
         this.enemies.damageEnemy(enemy, 140, false);
     this.effects.screenPulse(0xffaa63, 0.5);
     this.effects.ring(this.aircraft.x, this.aircraft.y, 0xffcb78, 240);
-    this.aircraft.flashCore();
     this.onItem('凤凰重生  HP 50% / 无敌 2 秒', true);
     return true;
   }
