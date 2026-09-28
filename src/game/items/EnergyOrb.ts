@@ -37,6 +37,7 @@ export class EnergyOrb extends Phaser.GameObjects.Arc {
     playerX: number,
     playerY: number,
     pickupRadius: number,
+    magnetSpeed: number = pickupBalance.magnetSpeed,
   ): boolean {
     this.lifeMs += deltaMs;
     this.setAlpha(0.8 + Math.sin(this.lifeMs / 150) * 0.2);
@@ -45,10 +46,7 @@ export class EnergyOrb extends Phaser.GameObjects.Arc {
     const distance = Math.hypot(dx, dy);
     if (distance < pickupBalance.collectRadius) return true;
     if (distance < pickupRadius && distance > 0) {
-      const step = Math.min(
-        distance,
-        (pickupBalance.magnetSpeed * deltaMs) / 1000,
-      );
+      const step = Math.min(distance, (magnetSpeed * deltaMs) / 1000);
       this.x += (dx / distance) * step;
       this.y += (dy / distance) * step;
     } else {

@@ -25,7 +25,12 @@ export class CollisionSystem {
     private readonly enemyBullets: EnemyBulletPool,
     private readonly player: PlayerAircraft,
     private readonly health: PlayerHealth,
-    private readonly onPlayerHit: (hpLost: number) => void,
+    private readonly onPlayerHit: (
+      hpLost: number,
+      shieldConsumed: boolean,
+      sourceX?: number,
+      sourceY?: number,
+    ) => void,
   ) {}
 
   update(): void {
@@ -88,8 +93,14 @@ export class CollisionSystem {
         )
       ) {
         const hpBefore = this.health.hp;
+        const shieldsBefore = this.health.shields;
         if (this.health.hit(enemy.collisionDamage))
-          this.onPlayerHit(hpBefore - this.health.hp);
+          this.onPlayerHit(
+            hpBefore - this.health.hp,
+            this.health.shields < shieldsBefore,
+            enemy.x,
+            enemy.y,
+          );
         this.enemies.enemies.release(enemy);
       }
     }
@@ -108,8 +119,14 @@ export class CollisionSystem {
         )
       ) {
         const hpBefore = this.health.hp;
+        const shieldsBefore = this.health.shields;
         if (this.health.hit(bullet.damage))
-          this.onPlayerHit(hpBefore - this.health.hp);
+          this.onPlayerHit(
+            hpBefore - this.health.hp,
+            this.health.shields < shieldsBefore,
+            bullet.x,
+            bullet.y,
+          );
         this.enemyBullets.release(bullet);
       }
     }

@@ -22,6 +22,7 @@ export class EnemyPool {
     enemy.activate(x, y, config);
     // 普通敌机首次出现时整机可见；入场演出不以裁掉机身为代价。
     enemy.y = Math.max(enemy.displayHeight / 2, enemy.y);
+    enemy.alignVisuals();
     return enemy;
   }
 

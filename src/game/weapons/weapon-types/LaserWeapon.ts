@@ -36,6 +36,7 @@ export class LaserWeapon extends BaseWeapon {
   }
   fire(): void {
     this.audio.playSfx('laser');
+    this.aircraft.muzzleFlash();
     this.beam.clear();
     this.beam.fillStyle(0xb064ff, 0.38);
     const width = weaponBalance.laser.width * (this.level >= 2 ? 1.6 : 1);

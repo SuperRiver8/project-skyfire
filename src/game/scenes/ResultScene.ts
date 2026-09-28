@@ -29,7 +29,7 @@ export class ResultScene extends Phaser.Scene {
     if (data.victory) {
       save.highestUnlockedLevel = Math.max(
         save.highestUnlockedLevel,
-        Math.min(5, data.levelId + 1),
+        Math.min(6, data.levelId + 1),
       );
       save.totalCoins += coins;
       if (data.levelId === 5) save.stats.bossesKilled += 1;
@@ -75,10 +75,6 @@ export class ResultScene extends Phaser.Scene {
         .setInteractive()
         .on('pointerdown', action);
     };
-    if (data.victory && data.levelId < 5)
-      button(670, '下一关', () =>
-        this.scene.start('GameScene', { levelId: data.levelId + 1 }),
-      );
     button(735, '重新挑战', () =>
       this.scene.start('GameScene', { levelId: data.levelId }),
     );

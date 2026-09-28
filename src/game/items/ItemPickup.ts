@@ -54,14 +54,16 @@ export class ItemPickup extends Phaser.GameObjects.Container {
     deltaMs: number,
     x: number,
     y: number,
+    attractRadius = 100,
+    collectRadius: number = itemDropConfig.pickupRadius,
   ): 'collect' | 'offscreen' | null {
     this.lifeMs += deltaMs;
     this.setScale(1 + Math.sin(this.lifeMs / 180) * 0.06);
     const dx = x - this.x,
       dy = y - this.y,
       distance = Math.hypot(dx, dy);
-    if (distance < itemDropConfig.pickupRadius) return 'collect';
-    if (distance < 100 && distance > 0) {
+    if (distance < collectRadius) return 'collect';
+    if (distance < attractRadius && distance > 0) {
       this.x += (dx / distance) * deltaMs * 0.4;
       this.y += (dy / distance) * deltaMs * 0.4;
     } else this.y += (itemDropConfig.fallSpeed * deltaMs) / 1000;

@@ -13,8 +13,8 @@ export class ExplosionPool {
     );
   }
 
-  spawn(x: number, y: number): void {
-    this.pool.acquire().activate(x, y);
+  spawn(x: number, y: number, scale = 1, bright = false): void {
+    this.pool.acquire().activate(x, y, scale, bright);
   }
 
   update(deltaMs: number): void {

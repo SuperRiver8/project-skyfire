@@ -18,12 +18,18 @@ export class PlayerHealth {
     return true;
   }
 
-  heal(amount: number): void {
-    this.hp = Math.min(playerBalance.maxHp, this.hp + Math.max(0, amount));
+  heal(amount: number): number {
+    const value = Math.max(0, amount);
+    const restored = Math.min(playerBalance.maxHp - this.hp, value);
+    this.hp += restored;
+    return value - restored;
+  }
+  addShield(): void {
+    this.shields = Math.min(5, this.shields + 1);
   }
   revive(): void {
     this.hp = playerBalance.maxHp / 2;
-    this.invulnerableMs = playerBalance.invulnerabilityAfterHitMs;
+    this.invulnerableMs = 2_000;
   }
 
   get isDead(): boolean {

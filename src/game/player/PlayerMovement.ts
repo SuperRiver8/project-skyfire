@@ -14,6 +14,7 @@ export function movePlayer(
   position: PlayerPosition,
   input: PlayerInputState,
   deltaMs: number,
+  speedMultiplier = 1,
 ): PlayerPosition {
   const deltaSeconds = clamp(deltaMs, 0, playerBalance.maxDeltaMs) / 1000;
   const minX = playerBalance.halfWidth;
@@ -42,7 +43,7 @@ export function movePlayer(
         (1 - Math.exp(-playerBalance.pointerFollowRate * deltaSeconds));
       const step = Math.min(
         easedDistance,
-        playerBalance.moveSpeed * deltaSeconds,
+        playerBalance.moveSpeed * speedMultiplier * deltaSeconds,
       );
       x += (dx / distance) * step;
       y += (dy / distance) * step;
@@ -51,7 +52,8 @@ export function movePlayer(
     const length = Math.hypot(input.moveX, input.moveY);
     if (length > 0) {
       const step =
-        (playerBalance.moveSpeed * deltaSeconds) / Math.max(1, length);
+        (playerBalance.moveSpeed * speedMultiplier * deltaSeconds) /
+        Math.max(1, length);
       x += input.moveX * step;
       y += input.moveY * step;
     }

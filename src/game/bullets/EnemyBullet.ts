@@ -69,6 +69,10 @@ export class EnemyBullet extends Phaser.GameObjects.Image {
     return this.active;
   }
 
+  get isHoming(): boolean {
+    return this.target !== undefined;
+  }
+
   advance(deltaMs: number): void {
     if (this.target && this.homingMs > 0) {
       const speed = Math.hypot(this.vx, this.vy);

@@ -3,6 +3,12 @@ import { mechanicalEagleConfig as config } from '../../config/bosses/mechanicalE
 import type { EnemyBulletPool } from '../bullets/EnemyBulletPool';
 import type { PlayerAircraft } from '../player/PlayerAircraft';
 import { GAME_WIDTH } from '../viewport';
+import { AircraftVisualController } from '../aircraft/AircraftVisualController';
+import { AircraftMotionTrailPool } from '../aircraft/AircraftMotionTrailPool';
+import {
+  aircraftEffectVisuals,
+  aircraftVisuals,
+} from '../../config/aircraft/aircraftVisuals';
 import { phaseForHp, type BossPhase } from './BossPhaseController';
 
 export type BossState =
@@ -16,7 +22,24 @@ export type BossState =
 
 export class BossController {
   readonly sprite: Phaser.GameObjects.Image;
-  hp: number = config.maxHp;
+  private readonly visual: Phaser.GameObjects.Container;
+  private readonly shadow: Phaser.GameObjects.Ellipse;
+  private readonly leftWing: Phaser.GameObjects.Triangle;
+  private readonly rightWing: Phaser.GameObjects.Triangle;
+  private readonly leftTurret: Phaser.GameObjects.Rectangle;
+  private readonly rightTurret: Phaser.GameObjects.Rectangle;
+  private readonly core: Phaser.GameObjects.Arc;
+  private readonly engines: Phaser.GameObjects.Ellipse[];
+  private readonly engineCores: Phaser.GameObjects.Triangle[];
+  private readonly highlights: Phaser.GameObjects.Ellipse[];
+  private readonly visualController = new AircraftVisualController(
+    aircraftVisuals.boss,
+  );
+  private hitFlashMs = 0;
+  private dashVisualMs = 0;
+  private dashTargetX = 0;
+  private trailMs = 0;
+  hp: number;
   state: BossState = 'ENTER';
   phase: BossPhase = 1;
   private stateMs = 0;
@@ -41,7 +64,9 @@ export class BossController {
     private readonly onLaserHit: (damage: number) => void,
     private readonly onPhase: (phase: BossPhase) => void,
     private readonly onExplosion: (x: number, y: number) => void,
+    private readonly hpMultiplier = 1,
   ) {
+    this.hp = Math.round(config.maxHp * hpMultiplier);
     const key = 'mechanical_eagle';
     if (!scene.textures.exists(key)) {
       const g = scene.add.graphics();
@@ -70,10 +95,64 @@ export class BossController {
       g.generateTexture(key, 200, 130);
       g.destroy();
     }
-    this.sprite = scene.add
-      .image(GAME_WIDTH / 2, 65, key)
-      .setFlipY(true)
-      .setDepth(5);
+    this.shadow = scene.add
+      .ellipse(GAME_WIDTH / 2, 82, 160, 39, 0x020914, 0.3)
+      .setDepth(4);
+    this.visual = scene.add.container(GAME_WIDTH / 2, 65).setDepth(5);
+    this.engines = [-43, 43].map((x) =>
+      scene.add.ellipse(x, -51, 15, 34, 0xff8d5f, 0.74),
+    );
+    this.engineCores = [-43, 43].map((x) =>
+      scene.add.triangle(x, -52, 0, 25, 7, 0, 14, 25, 0xffdaa0, 0.82),
+    );
+    this.leftWing = scene.add.triangle(
+      -69,
+      5,
+      38,
+      4,
+      0,
+      34,
+      49,
+      33,
+      0x81354b,
+      0.9,
+    );
+    this.rightWing = scene.add.triangle(
+      69,
+      5,
+      0,
+      4,
+      49,
+      34,
+      11,
+      33,
+      0x81354b,
+      0.9,
+    );
+    this.sprite = scene.add.image(0, 0, key).setFlipY(true);
+    this.highlights = [-64, 64].map((x) =>
+      scene.add.ellipse(x, 12, 47, 8, 0xffd0ad, 0.18),
+    );
+    this.leftTurret = scene.add
+      .rectangle(-76, 28, 16, 29, 0x333247)
+      .setStrokeStyle(2, 0xffaa73);
+    this.rightTurret = scene.add
+      .rectangle(76, 28, 16, 29, 0x333247)
+      .setStrokeStyle(2, 0xffaa73);
+    this.core = scene.add
+      .circle(0, 19, 13, 0xffad69, 0.75)
+      .setStrokeStyle(2, 0xffe3af);
+    this.visual.add([
+      ...this.engines,
+      ...this.engineCores,
+      this.leftWing,
+      this.rightWing,
+      this.sprite,
+      ...this.highlights,
+      this.leftTurret,
+      this.rightTurret,
+      this.core,
+    ]);
     this.hpBackground = scene.add
       .rectangle(GAME_WIDTH / 2, 120, 430, 14, 0x3a1720)
       .setVisible(false)
@@ -103,28 +182,37 @@ export class BossController {
   }
 
   get x(): number {
-    return this.sprite.x;
+    return this.visual.x;
   }
   get y(): number {
-    return this.sprite.y;
+    return this.visual.y;
   }
   isActive(): boolean {
     return this.state !== 'DYING' && this.state !== 'DEAD';
+  }
+  isDamageable(): boolean {
+    return this.isActive() && this.state !== 'ENTER';
+  }
+
+  interruptNormalAttack(durationMs: number): void {
+    if (!this.isActive() || this.state === 'PHASE_TRANSITION') return;
+    this.attackMs -= durationMs;
+    this.circleMs -= durationMs;
+    this.missileMs -= durationMs;
+    // 激光和冲刺属于阶段技能，EMP 不改它们的计时。
   }
 
   damage(amount: number): void {
     if (!this.isActive() || this.state === 'ENTER') return;
     this.hp = Math.max(0, this.hp - amount);
-    this.hpFill.width = (430 * this.hp) / config.maxHp;
+    this.hpFill.width = (430 * this.hp) / (config.maxHp * this.hpMultiplier);
+    this.hitFlashMs = 95;
     this.sprite.setTint(0xffffff).setTintMode(Phaser.TintModes.FILL);
-    this.scene.time.delayedCall(80, () => {
-      if (this.sprite.active) this.sprite.clearTint();
-    });
     if (this.hp === 0) {
       this.beginDeath();
       return;
     }
-    const next = phaseForHp(this.hp, config.maxHp);
+    const next = phaseForHp(this.hp, config.maxHp * this.hpMultiplier);
     if (next > this.phase) {
       this.phase = next;
       this.state = 'PHASE_TRANSITION';
@@ -138,8 +226,10 @@ export class BossController {
 
   update(deltaMs: number): void {
     this.stateMs += deltaMs;
+    this.hitFlashMs = Math.max(0, this.hitFlashMs - deltaMs);
     if (this.state === 'ENTER') {
-      this.sprite.y = 65 + Math.min(1, this.stateMs / config.enterMs) * 180;
+      this.visual.y = 65 + Math.min(1, this.stateMs / config.enterMs) * 180;
+      this.updateVisuals(deltaMs, 0);
       if (this.stateMs >= config.enterMs) {
         this.state = 'PHASE_1';
         this.stateMs = 0;
@@ -150,8 +240,10 @@ export class BossController {
       return;
     }
     if (this.state === 'DYING') {
+      this.updateVisuals(deltaMs, 0);
+      this.visual.rotation += Math.sin(this.stateMs / 90) * 0.025;
       if (this.stateMs >= 800)
-        this.sprite.setAlpha(Math.max(0, 1 - (this.stateMs - 800) / 200));
+        this.visual.setAlpha(Math.max(0, 1 - (this.stateMs - 800) / 200));
       if (this.stateMs >= config.deathMs) {
         this.state = 'DEAD';
         this.onDead();
@@ -160,16 +252,48 @@ export class BossController {
     }
     if (this.state === 'DEAD') return;
     if (this.state === 'PHASE_TRANSITION') {
-      this.sprite.setScale(1 + 0.1 * Math.sin(this.stateMs / 50));
+      this.updateVisuals(deltaMs, 0, 1 + 0.1 * Math.sin(this.stateMs / 50));
       if (this.stateMs >= config.transitionMs) {
         this.state = this.phase === 2 ? 'PHASE_2' : 'PHASE_3';
         this.stateMs = 0;
-        this.sprite.setScale(1);
-        this.sprite.setTint(this.phase === 3 ? 0xff6666 : 0xffffff);
       }
       return;
     }
-    this.sprite.x = GAME_WIDTH / 2 + Math.sin(this.stateMs / 700) * 145;
+    const previousX = this.visual.x;
+    const baseX = GAME_WIDTH / 2 + Math.sin(this.stateMs / 700) * 145;
+    if (this.dashVisualMs > 0) {
+      this.dashVisualMs = Math.max(0, this.dashVisualMs - deltaMs);
+      const progress =
+        1 - this.dashVisualMs / aircraftEffectVisuals.bossDashVisualMs;
+      this.visual.x =
+        baseX +
+        Phaser.Math.Clamp(this.dashTargetX - baseX, -125, 125) *
+          Math.sin(progress * Math.PI) *
+          0.7;
+    } else this.visual.x = baseX;
+    this.updateVisuals(
+      deltaMs,
+      deltaMs > 0 ? ((this.visual.x - previousX) * 1000) / deltaMs : 0,
+      1,
+      this.dashVisualMs > 0 ? 0.55 : 0,
+    );
+    if (this.dashVisualMs > 0) {
+      this.trailMs += deltaMs;
+      if (this.trailMs >= aircraftVisuals.boss.trailIntervalMs) {
+        this.trailMs = 0;
+        AircraftMotionTrailPool.forScene(this.scene).emit(
+          this.sprite.texture.key,
+          this.x,
+          this.y,
+          this.visual.rotation,
+          this.visual.scaleX,
+          this.visual.scaleY,
+          true,
+          4,
+          0xff9489,
+        );
+      }
+    } else this.trailMs = 0;
     this.attackMs += deltaMs;
     this.circleMs += deltaMs;
     this.missileMs += deltaMs;
@@ -214,6 +338,59 @@ export class BossController {
       if (Math.abs(this.player.x - this.beam.x) < 37) this.onLaserHit(15);
       if (this.stateMs >= this.laserActiveMs) this.beam.setVisible(false);
     }
+  }
+
+  private updateVisuals(
+    deltaMs: number,
+    velocityX: number,
+    scale = 1,
+    boost = 0,
+  ): void {
+    const pose = this.visualController.update(deltaMs, velocityX, boost);
+    this.visual.setRotation(pose.roll).setScale(scale * pose.bodyScaleX, scale);
+    this.shadow
+      .setPosition(this.x + pose.shadowX, this.y + 17)
+      .setAlpha(pose.shadowAlpha)
+      .setScale(scale);
+    for (const [index, engine] of this.engines.entries()) {
+      engine
+        .setPosition((index === 0 ? -43 : 43) + pose.flameX, -51)
+        .setScale(
+          1 + this.phase * 0.06,
+          pose.flameScaleY * (1 + this.phase * 0.1),
+        );
+      engine.setFillStyle(
+        this.phase === 3 ? 0xff645e : 0xffa16b,
+        0.7 + this.phase * 0.06,
+      );
+    }
+    for (const [index, core] of this.engineCores.entries())
+      core
+        .setPosition((index === 0 ? -43 : 43) + pose.flameX, -52)
+        .setScale(0.9, pose.flameScaleY * (1 + this.phase * 0.1))
+        .setFillStyle(this.phase === 3 ? 0xffe4b7 : 0xffd69b, 0.88);
+    this.leftWing
+      .setPosition(-69 - this.phase * 3, 5)
+      .setScale(pose.leftWingScaleX * (1 + this.phase * 0.04), 1);
+    this.rightWing
+      .setPosition(69 + this.phase * 3, 5)
+      .setScale(pose.rightWingScaleX * (1 + this.phase * 0.04), 1);
+    this.leftTurret
+      .setPosition(-76 - this.phase * 2, 26 + this.phase * 2)
+      .setScale(1, 1 + this.phase * 0.12);
+    this.rightTurret
+      .setPosition(76 + this.phase * 2, 26 + this.phase * 2)
+      .setScale(1, 1 + this.phase * 0.12);
+    this.core
+      .setScale(1 + this.phase * 0.14 + Math.sin(this.stateMs / 95) * 0.07)
+      .setFillStyle(this.phase === 3 ? 0xff5353 : 0xffad69, 0.72);
+    this.highlights[0].setAlpha(pose.leftHighlightAlpha);
+    this.highlights[1].setAlpha(pose.rightHighlightAlpha);
+    this.sprite.setX(this.hitFlashMs > 0 ? Math.sin(this.stateMs / 10) * 2 : 0);
+    if (this.hitFlashMs > 0)
+      this.sprite.setTint(0xffffff).setTintMode(Phaser.TintModes.FILL);
+    else if (this.phase === 3) this.sprite.setTint(0xffa5a5);
+    else this.sprite.clearTint();
   }
 
   private fanShot(): void {
@@ -275,6 +452,8 @@ export class BossController {
     this.scene.time.delayedCall(config.dashWarningMs, () => {
       marker.destroy();
       if (!this.isActive()) return;
+      this.dashVisualMs = aircraftEffectVisuals.bossDashVisualMs;
+      this.dashTargetX = targetX;
       if (Math.abs(this.player.x - targetX) < 38) this.onLaserHit(25);
       this.scene.cameras.main.shake(130, 0.005);
     });
@@ -311,7 +490,8 @@ export class BossController {
     }
   }
   destroy(): void {
-    this.sprite.destroy();
+    this.visual.destroy();
+    this.shadow.destroy();
     this.hpBackground.destroy();
     this.hpFill.destroy();
     this.title.destroy();

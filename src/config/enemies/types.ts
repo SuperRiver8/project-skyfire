@@ -16,5 +16,4 @@ export interface EnemyConfig {
   scale?: number;
   spriteKey: string;
   hitbox: { width: number; height: number };
-  dropTableId?: string;
 }

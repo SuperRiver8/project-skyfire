@@ -10,5 +10,4 @@ export const scoutConfig: EnemyConfig = {
   aiType: 'STRAIGHT',
   spriteKey: 'enemy_scout',
   hitbox: { width: 28, height: 28 },
-  dropTableId: 'normal_enemy',
 };

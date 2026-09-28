@@ -1,0 +1,126 @@
+import Phaser from 'phaser';
+import { electricArcBalance as balance } from '../../config/balance/electricArcBalance';
+import type { Enemy } from '../enemies/Enemy';
+import type { EnemyController } from '../enemies/EnemyController';
+
+export class ElectricArc {
+  private readonly graphics: Phaser.GameObjects.Graphics;
+  private attackMs = 0;
+  stacks = 0;
+
+  constructor(
+    scene: Phaser.Scene,
+    private readonly enemies: EnemyController,
+  ) {
+    this.graphics = scene.add.graphics().setDepth(14);
+  }
+
+  addStack(): void {
+    this.setStacks(this.stacks + 1);
+  }
+
+  setStacks(value: number): void {
+    this.stacks = Math.max(0, Math.min(balance.maxStacks, value));
+  }
+
+  update(
+    deltaMs: number,
+    playerX: number,
+    playerY: number,
+    attack: number,
+    frozen = false,
+    overloaded = false,
+  ): void {
+    this.graphics.clear();
+    if (this.stacks === 0) return;
+    const width = balance.baseBarWidth + this.stacks * balance.barWidthPerStack;
+    const barY = playerY - 37;
+    const color = frozen ? 0xe4f8ff : 0x43d6ff;
+    this.graphics.lineStyle(8 + this.stacks, color, 0.22);
+    this.graphics.lineBetween(
+      playerX - width / 2,
+      barY,
+      playerX + width / 2,
+      barY,
+    );
+    this.graphics.lineStyle(
+      2 + this.stacks,
+      frozen ? 0xffffff : 0xb9f8ff,
+      0.95,
+    );
+    this.graphics.lineBetween(
+      playerX - width / 2,
+      barY,
+      playerX + width / 2,
+      barY,
+    );
+
+    // 电击装置只选轻型敌机，与武器槽中的闪电链各自独立。
+    const range =
+      (balance.baseRange + this.stacks * balance.rangePerStack) *
+      (frozen ? 1.3 : 1);
+    const targets = Array.from(this.enemies.enemies.activeEnemies())
+      .filter(
+        (enemy) =>
+          this.isLight(enemy) &&
+          Math.hypot(enemy.x - playerX, enemy.y - barY) <= range,
+      )
+      .sort(
+        (a, b) =>
+          Math.hypot(a.x - playerX, a.y - barY) -
+          Math.hypot(b.x - playerX, b.y - barY),
+      )
+      .slice(
+        0,
+        (this.stacks >= 5 ? 3 : this.stacks >= 3 ? 2 : 1) +
+          (overloaded ? 1 : 0),
+      );
+    if (targets.length === 0) return;
+    const beamWidth = this.stacks >= 4 ? 7 : 3 + this.stacks * 0.5;
+    for (const target of targets) {
+      const bendX = (playerX + target.x) / 2 + Math.sin(this.attackMs) * 10;
+      const bendY = (barY + target.y) / 2;
+      this.graphics.lineStyle(beamWidth + 4, color, 0.28);
+      this.graphics.lineBetween(playerX, barY, bendX, bendY);
+      this.graphics.lineBetween(bendX, bendY, target.x, target.y);
+      this.graphics.lineStyle(Math.max(2, beamWidth - 2), 0xffffff, 0.92);
+      this.graphics.lineBetween(playerX, barY, bendX, bendY);
+      this.graphics.lineBetween(bendX, bendY, target.x, target.y);
+    }
+    this.attackMs -= deltaMs;
+    if (this.attackMs <= 0) {
+      const damage =
+        (balance.baseDamage + this.stacks * balance.damagePerStack) *
+        attack *
+        (this.stacks >= 4 ? 1.45 : 1) *
+        (frozen ? 1.25 : 1);
+      for (const target of targets) {
+        if (!target.isActive()) continue;
+        const { x, y } = target;
+        const killed = this.enemies.damageEnemy(target, damage);
+        if (killed && this.stacks >= 5) {
+          const jump = Array.from(this.enemies.enemies.activeEnemies()).find(
+            (enemy) =>
+              this.isLight(enemy) &&
+              !targets.includes(enemy) &&
+              Math.hypot(enemy.x - x, enemy.y - y) < 95,
+          );
+          if (jump) {
+            this.graphics.lineStyle(3, color, 0.95);
+            this.graphics.lineBetween(x, y, jump.x, jump.y);
+            this.enemies.damageEnemy(jump, damage * 0.55, false);
+          }
+        }
+      }
+      this.attackMs = balance.attackIntervalMs;
+    }
+  }
+
+  private isLight(enemy: Enemy): boolean {
+    return enemy.aiType === 'STRAIGHT' || enemy.aiType === 'ZIGZAG';
+  }
+
+  destroy(): void {
+    this.graphics.destroy();
+  }
+}

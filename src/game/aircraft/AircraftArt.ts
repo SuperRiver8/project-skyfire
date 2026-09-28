@@ -1,7 +1,15 @@
 import Phaser from 'phaser';
 
 export type EnemyArtId =
-  'scout' | 'zigzag' | 'shooter' | 'charger' | 'kamikaze' | 'tank';
+  | 'scout'
+  | 'scout_ace'
+  | 'zigzag'
+  | 'zigzag_manta'
+  | 'shooter'
+  | 'shooter_fortress'
+  | 'charger'
+  | 'kamikaze'
+  | 'tank';
 
 const SIZE = 80;
 
@@ -82,8 +90,11 @@ export function ensurePlayerArt(scene: Phaser.Scene): void {
 
 const enemyColors: Record<EnemyArtId, [number, number, number]> = {
   scout: [0xdf4964, 0x752943, 0xffc6b5],
+  scout_ace: [0x52d6cb, 0x235d72, 0xcaffed],
   zigzag: [0xa773e8, 0x50317c, 0xe7d1ff],
+  zigzag_manta: [0x7c86ee, 0x343b86, 0xd5e7ff],
   shooter: [0xe7a152, 0x765138, 0xffe0a6],
+  shooter_fortress: [0x8fafbd, 0x394f6b, 0xf0f7d1],
   charger: [0xf15e4f, 0x813746, 0xffc2a4],
   kamikaze: [0xe77da8, 0x713a72, 0xffd5eb],
   tank: [0x9b8bd3, 0x454875, 0xe2d9ff],
@@ -95,8 +106,15 @@ export function ensureEnemyArt(scene: Phaser.Scene): void {
     if (scene.textures.exists(key)) continue;
     const [main, dark, light] = enemyColors[id];
     const g = scene.add.graphics();
-    const broad = id === 'tank' || id === 'shooter';
-    const tip = broad ? 5 : id === 'zigzag' ? 3 : 10;
+    const family = id.startsWith('scout')
+      ? 'scout'
+      : id.startsWith('zigzag')
+        ? 'zigzag'
+        : id.startsWith('shooter')
+          ? 'shooter'
+          : id;
+    const broad = family === 'tank' || family === 'shooter';
+    const tip = broad ? 5 : family === 'zigzag' ? 3 : 10;
     const nose = id === 'charger' ? 77 : 69;
     // 敌机朝下，轮廓和识别灯随类型变化，弹幕密集时仍能辨认机型。
     g.fillStyle(0x160d26, 0.9);
@@ -110,7 +128,7 @@ export function ensureEnemyArt(scene: Phaser.Scene): void {
     g.fillTriangle(40, nose, 26, 15, 54, 15);
     g.fillTriangle(30, 44, tip + 5, 23, 35, 34);
     g.fillTriangle(50, 44, 75 - tip, 23, 45, 34);
-    if (id === 'zigzag') {
+    if (family === 'zigzag') {
       g.fillStyle(dark);
       g.fillTriangle(24, 24, 3, 8, 29, 36);
       g.fillTriangle(56, 24, 77, 8, 51, 36);
@@ -118,7 +136,7 @@ export function ensureEnemyArt(scene: Phaser.Scene): void {
       g.fillTriangle(11, 12, 22, 26, 28, 31);
       g.fillTriangle(69, 12, 58, 26, 52, 31);
     }
-    if (id === 'scout') {
+    if (family === 'scout') {
       g.fillStyle(light);
       g.fillTriangle(13, 24, 24, 31, 29, 37);
       g.fillTriangle(67, 24, 56, 31, 51, 37);
@@ -131,7 +149,7 @@ export function ensureEnemyArt(scene: Phaser.Scene): void {
     g.lineBetween(40, nose - 3, 40, nose - 14);
     g.lineBetween(tip + 8, 25, 29, 35);
     g.lineBetween(72 - tip, 25, 51, 35);
-    if (id === 'shooter' || id === 'tank') {
+    if (family === 'shooter' || family === 'tank') {
       g.fillStyle(dark);
       g.fillRect(8, 17, 10, 25);
       g.fillRect(62, 17, 10, 25);
@@ -168,6 +186,37 @@ export function ensureEnemyArt(scene: Phaser.Scene): void {
       g.fillStyle(0x736caa);
       g.fillRect(20, 23, 5, 26);
       g.fillRect(55, 23, 5, 26);
+    }
+    // 同类敌机也有独立轮廓和识别灯，编队里能一眼看出不同款式。
+    if (id === 'scout_ace') {
+      g.fillStyle(dark);
+      g.fillTriangle(26, 30, 3, 40, 34, 43);
+      g.fillTriangle(54, 30, 77, 40, 46, 43);
+      g.fillStyle(light);
+      g.fillTriangle(8, 39, 27, 35, 30, 40);
+      g.fillTriangle(72, 39, 53, 35, 50, 40);
+      g.fillCircle(40, 31, 4);
+    }
+    if (id === 'zigzag_manta') {
+      g.fillStyle(dark);
+      g.fillTriangle(28, 25, 1, 4, 22, 44);
+      g.fillTriangle(52, 25, 79, 4, 58, 44);
+      g.fillStyle(light);
+      g.fillTriangle(5, 10, 24, 30, 18, 25);
+      g.fillTriangle(75, 10, 56, 30, 62, 25);
+      g.fillRect(37, 20, 6, 12);
+    }
+    if (id === 'shooter_fortress') {
+      g.fillStyle(dark);
+      g.fillRect(3, 11, 16, 30);
+      g.fillRect(61, 11, 16, 30);
+      g.fillStyle(light);
+      g.fillRect(7, 35, 8, 13);
+      g.fillRect(65, 35, 8, 13);
+      g.fillRect(29, 19, 22, 6);
+      g.fillStyle(0xffdc81);
+      g.fillCircle(11, 46, 4);
+      g.fillCircle(69, 46, 4);
     }
     g.generateTexture(key, SIZE, SIZE);
     g.destroy();

@@ -50,5 +50,7 @@ export const level01: LevelConfig = {
       ],
     },
   ],
+  bossId: 'mechanical_eagle',
+  bossHpMultiplier: 0.35,
   rewards: { coins: 50 },
 };

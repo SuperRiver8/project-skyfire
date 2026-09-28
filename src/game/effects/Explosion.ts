@@ -3,6 +3,7 @@ import { explosionConfig } from '../../config/effects/explosion';
 
 export class Explosion extends Phaser.GameObjects.Arc {
   private remainingMs = 0;
+  private size = 1;
 
   constructor(scene: Phaser.Scene) {
     super(scene, 0, 0, explosionConfig.radius, 0xffa343, explosionConfig.alpha);
@@ -11,10 +12,13 @@ export class Explosion extends Phaser.GameObjects.Arc {
     scene.add.existing(this);
   }
 
-  activate(x: number, y: number): void {
+  activate(x: number, y: number, size = 1, bright = false): void {
     this.setPosition(x, y);
+    this.size = size;
+    this.setFillStyle(bright ? 0xe9ffff : 0xffa343, explosionConfig.alpha);
+    this.setStrokeStyle(3, bright ? 0xffffff : 0xffe2aa);
     this.remainingMs = explosionConfig.durationMs;
-    this.setScale(explosionConfig.startScale);
+    this.setScale(explosionConfig.startScale * size);
     this.setAlpha(explosionConfig.alpha);
     this.setActive(true).setVisible(true);
   }
@@ -33,8 +37,9 @@ export class Explosion extends Phaser.GameObjects.Arc {
     const progress =
       1 - Math.max(0, this.remainingMs) / explosionConfig.durationMs;
     this.setScale(
-      explosionConfig.startScale +
-        (explosionConfig.endScale - explosionConfig.startScale) * progress,
+      (explosionConfig.startScale +
+        (explosionConfig.endScale - explosionConfig.startScale) * progress) *
+        this.size,
     );
     this.setAlpha(explosionConfig.alpha * (1 - progress));
     return this.remainingMs <= 0;

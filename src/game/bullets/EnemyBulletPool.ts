@@ -43,6 +43,27 @@ export class EnemyBulletPool {
     for (const bullet of this.pool.activeItems()) this.pool.release(bullet);
   }
 
+  clearWithin(x: number, y: number, radius: number): number {
+    let cleared = 0;
+    for (const bullet of this.pool.activeItems()) {
+      if (Math.hypot(bullet.x - x, bullet.y - y) > radius || bullet.isHoming)
+        continue;
+      this.pool.release(bullet);
+      cleared += 1;
+    }
+    return cleared;
+  }
+
+  clearOrdinary(): number {
+    let cleared = 0;
+    for (const bullet of this.pool.activeItems()) {
+      if (bullet.isHoming) continue;
+      this.pool.release(bullet);
+      cleared += 1;
+    }
+    return cleared;
+  }
+
   get activeCount(): number {
     return this.pool.activeCount;
   }

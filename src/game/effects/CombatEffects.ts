@@ -13,10 +13,18 @@ class DamageText extends Phaser.GameObjects.Text {
     this.setDepth(30).setActive(false).setVisible(false);
     scene.add.existing(this);
   }
-  activate(x: number, y: number, damage: number, crit: boolean): void {
+  activate(
+    x: number,
+    y: number,
+    damage: number,
+    crit: boolean,
+    enhanced: boolean,
+  ): void {
     this.setPosition(x, y)
       .setText(`${Math.round(damage)}`)
-      .setColor(crit ? '#ffe56a' : '#ffffff');
+      .setColor(enhanced ? '#ff875b' : crit ? '#ffe56a' : '#ffffff')
+      .setFontSize(enhanced ? 34 : crit ? 29 : 20)
+      .setScale(1);
     this.lifeMs = config.textLifeMs;
     this.setAlpha(1).setActive(true).setVisible(true);
   }
@@ -85,9 +93,11 @@ export class CombatEffects {
     damage: number,
     crit: boolean,
     killed: boolean,
+    enhanced = false,
   ): void {
-    if (this.damageNumbers) this.texts.acquire().activate(x, y, damage, crit);
-    const count = killed ? 5 : 2;
+    if (this.damageNumbers)
+      this.texts.acquire().activate(x, y, damage, crit, enhanced);
+    const count = enhanced ? 12 : crit ? 8 : killed ? 5 : 2;
     for (let i = 0; i < count; i += 1)
       this.sparks.acquire().activate(x, y, (i * Math.PI * 2) / count);
     if (killed && this.screenShake)
@@ -95,6 +105,10 @@ export class CombatEffects {
         config.shakeDurationMs,
         config.shakeIntensity,
       );
+  }
+  playerHit(x: number, y: number): void {
+    for (let i = 0; i < 7; i += 1)
+      this.sparks.acquire().activate(x, y, (i * Math.PI * 2) / 7);
   }
   update(deltaMs: number): void {
     for (const item of this.texts.activeItems())

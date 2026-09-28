@@ -6,6 +6,7 @@ import { GAME_HEIGHT } from '../viewport';
 
 export class PickupPool {
   private readonly pool: ObjectPool<EnergyOrb>;
+  private magnetMs = 0;
 
   constructor(scene: Phaser.Scene) {
     this.pool = new ObjectPool(
@@ -25,14 +26,28 @@ export class PickupPool {
     radius: number,
     onCollect: (exp: number) => void,
   ): void {
+    const magnetActive = this.magnetMs > 0;
     for (const orb of this.pool.activeItems()) {
-      if (orb.advance(deltaMs, x, y, radius)) {
+      if (
+        orb.advance(
+          deltaMs,
+          x,
+          y,
+          magnetActive ? Infinity : radius,
+          magnetActive ? 1_900 : pickupBalance.magnetSpeed,
+        )
+      ) {
         onCollect(orb.exp);
         this.pool.release(orb);
       } else if (orb.y > GAME_HEIGHT + 20) {
         this.pool.release(orb);
       }
     }
+    this.magnetMs = Math.max(0, this.magnetMs - deltaMs);
+  }
+
+  startMagnet(): void {
+    this.magnetMs = 600;
   }
 
   collectAll(onCollect: (exp: number) => void): void {

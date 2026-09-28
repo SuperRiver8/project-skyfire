@@ -1,9 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { level01 } from '../src/config/levels/level01';
 import { WaveManager } from '../src/game/level/WaveManager';
+import { getLevelConfig } from '../src/game/level/LevelManager';
 
 describe('WaveManager', () => {
-  it('spawns the configured first group and waits for surviving enemies before completion', () => {
+  it('configures a boss for every playable level', () => {
+    for (let level = 1; level <= 5; level += 1)
+      expect(getLevelConfig(level).bossId).toBe('mechanical_eagle');
+  });
+  it('spawns the configured first group and starts the boss after the level duration', () => {
     let count = 0;
     let complete = false;
     const manager = new WaveManager(
@@ -18,8 +23,6 @@ describe('WaveManager', () => {
     for (let i = 0; i < 21; i += 1) manager.update(100, 1);
     expect(count).toBe(5);
     for (let i = 0; i < 750; i += 1) manager.update(100, 1);
-    expect(complete).toBe(false);
-    manager.update(0, 0);
     expect(complete).toBe(true);
   });
 });

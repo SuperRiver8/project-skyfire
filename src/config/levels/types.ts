@@ -22,5 +22,6 @@ export interface LevelConfig {
   durationMs: number;
   waves: WaveConfig[];
   bossId?: string;
+  bossHpMultiplier?: number;
   rewards: { coins: number };
 }

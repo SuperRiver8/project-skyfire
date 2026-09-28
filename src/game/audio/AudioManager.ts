@@ -5,6 +5,8 @@ export type SfxId =
   | 'player_hit'
   | 'upgrade'
   | 'pickup'
+  | 'pickup_max'
+  | 'critical'
   | 'boss_warning'
   | 'boss_phase'
   | 'boss_explosion'
@@ -12,6 +14,8 @@ export type SfxId =
   | 'game_over'
   | 'laser'
   | 'missile'
+  | 'homing_missile'
+  | 'homing_missile_rapid'
   | 'lightning';
 
 interface SfxPreset {
@@ -72,6 +76,22 @@ const presets: Record<SfxId, SfxPreset> = {
     noise: 0,
     wave: 'sine',
   },
+  pickup_max: {
+    pitch: 560,
+    endPitch: 1450,
+    duration: 0.27,
+    volume: 0.2,
+    noise: 0,
+    wave: 'triangle',
+  },
+  critical: {
+    pitch: 1250,
+    endPitch: 360,
+    duration: 0.1,
+    volume: 0.15,
+    noise: 0.04,
+    wave: 'square',
+  },
   boss_warning: {
     pitch: 180,
     endPitch: 75,
@@ -128,6 +148,22 @@ const presets: Record<SfxId, SfxPreset> = {
     noise: 0.035,
     wave: 'sawtooth',
   },
+  homing_missile: {
+    pitch: 570,
+    endPitch: 215,
+    duration: 0.105,
+    volume: 0.055,
+    noise: 0.01,
+    wave: 'triangle',
+  },
+  homing_missile_rapid: {
+    pitch: 710,
+    endPitch: 260,
+    duration: 0.115,
+    volume: 0.07,
+    noise: 0.018,
+    wave: 'sawtooth',
+  },
   lightning: {
     pitch: 1400,
     endPitch: 170,
@@ -158,11 +194,13 @@ export class AudioManager {
   playSfx(id: SfxId): void {
     if (this.sfxVolume <= 0) return;
     const now = performance.now();
-    if (
-      now - (this.lastPlayed.get(id) ?? -Infinity) <
-      (id === 'player_shoot' ? 90 : 50)
-    )
-      return;
+    const minimumGap =
+      id === 'player_shoot'
+        ? 90
+        : id === 'pickup' || id === 'pickup_max'
+          ? 0
+          : 50;
+    if (now - (this.lastPlayed.get(id) ?? -Infinity) < minimumGap) return;
     this.lastPlayed.set(id, now);
     try {
       AudioManager.unlock();

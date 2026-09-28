@@ -6,6 +6,7 @@ import { EnemyBulletPool } from '../bullets/EnemyBulletPool';
 import { EnemyController } from '../enemies/EnemyController';
 import { InputController } from '../input/InputController';
 import { PlayerAircraft } from '../player/PlayerAircraft';
+import { AircraftMotionTrailPool } from '../aircraft/AircraftMotionTrailPool';
 import { PlayerController } from '../player/PlayerController';
 import { PlayerHealth } from '../player/PlayerHealth';
 import { PlayerStats } from '../player/PlayerStats';
@@ -18,6 +19,9 @@ import { AudioManager } from '../audio/AudioManager';
 import { feedbackConfig } from '../../config/effects/feedback';
 import { SaveManager } from '../save/SaveManager';
 import { PausePanel } from '../ui/PausePanel';
+import { GameSoundButton } from '../ui/GameSoundButton';
+import { CombatHud } from '../ui/CombatHud';
+import { ShieldAura } from '../ui/ShieldAura';
 import { DebugOverlay } from '../ui/DebugOverlay';
 import { Random } from '../utils/Random';
 import type { ResultData } from './ResultScene';
@@ -26,7 +30,31 @@ import {
   type UpgradeOption,
 } from '../upgrades/UpgradeGenerator';
 import { GAME_WIDTH } from '../viewport';
-import { WeaponManager } from '../weapons/WeaponManager';
+import { WeaponManager, type WeaponId } from '../weapons/WeaponManager';
+import type { ItemId } from '../../config/items/items';
+
+interface RunState {
+  hp: number;
+  shields: number;
+  playerLevel: number;
+  exp: number;
+  attackCores: number;
+  rapidCores: number;
+  critCores: number;
+  berserkMs: number;
+  magnetMs: number;
+  empArcMs: number;
+  critStreak: number;
+  guaranteedCrit: boolean;
+  weaponLevels: Record<WeaponId, number>;
+  electricStacks: number;
+  missileLevel: number;
+  missileOverdrive: number;
+  phoenixReady: boolean;
+  freezeMs: number;
+  repairOverflow: number;
+  recentDrops: ItemId[];
+}
 
 export class GameScene extends Phaser.Scene {
   private playerController!: PlayerController;
@@ -44,8 +72,9 @@ export class GameScene extends Phaser.Scene {
   private itemManager!: ItemManager;
   private notificationText!: Phaser.GameObjects.Text;
   private toastSerial = 0;
-  private hpText!: Phaser.GameObjects.Text;
-  private expText!: Phaser.GameObjects.Text;
+  private hud!: CombatHud;
+  private shieldAura!: ShieldAura;
+  private runState: RunState | undefined;
   private levelId = 1;
   private boss: BossController | undefined;
   private effects!: CombatEffects;
@@ -65,8 +94,9 @@ export class GameScene extends Phaser.Scene {
     super('GameScene');
   }
 
-  init(data?: { levelId?: number }): void {
+  init(data?: { levelId?: number; runState?: RunState }): void {
     this.levelId = data?.levelId ?? 1;
+    this.runState = data?.runState;
   }
 
   create(): void {
@@ -91,6 +121,20 @@ export class GameScene extends Phaser.Scene {
     this.health = new PlayerHealth();
     this.gameOver = false;
     this.stats = new PlayerStats();
+    if (this.runState) {
+      this.health.hp = this.runState.hp;
+      this.health.shields = this.runState.shields;
+      this.stats.attackCores = this.runState.attackCores;
+      this.stats.rapidCores = this.runState.rapidCores;
+      this.stats.critCores = this.runState.critCores;
+      this.stats.berserkMs = this.runState.berserkMs;
+      this.stats.magnetMs = this.runState.magnetMs;
+      this.stats.empArcMs = this.runState.empArcMs;
+      this.stats.restoreCritChain(
+        this.runState.critStreak,
+        this.runState.guaranteedCrit,
+      );
+    }
     const settings = new SaveManager().load().settings;
     this.effects = new CombatEffects(
       this,
@@ -101,18 +145,18 @@ export class GameScene extends Phaser.Scene {
     this.audio.setSfxVolume(settings.sfxVolume);
     this.hitStopMs = 0;
     this.progress = new PlayerProgress();
-    this.hpText = this.add.text(20, 48, `生命 ${this.health.hp}`, {
-      fontFamily: 'Arial, sans-serif',
-      fontSize: '20px',
-      color: '#8ef0cf',
-    });
-    this.expText = this.add.text(20, 76, '等级 1  经验 0/40', {
-      fontFamily: 'Arial, sans-serif',
-      fontSize: '17px',
-      color: '#5affb0',
-    });
+    if (this.runState) {
+      this.progress.level = this.runState.playerLevel;
+      this.progress.exp = this.runState.exp;
+      aircraft.setForm(
+        this.progress.level >= 6 ? 3 : this.progress.level >= 3 ? 2 : 1,
+      );
+    }
+    this.hud = new CombatHud(this);
+    this.hud.update(this.health, this.progress);
+    this.shieldAura = new ShieldAura(this);
     const input = new InputController(this);
-    this.playerController = new PlayerController(aircraft, input);
+    this.playerController = new PlayerController(aircraft, input, this.stats);
     this.pickups = new PickupPool(this);
     this.enemyController = new EnemyController(
       this,
@@ -120,15 +164,16 @@ export class GameScene extends Phaser.Scene {
         this.score = score;
         scoreText.setText(`得分 ${score}`);
       },
-      (x, y, exp) => {
+      (x, y, exp, elite) => {
         this.kills += 1;
         this.pickups.spawnExp(x, y, exp);
-        this.itemManager.rollDrop(x, y);
+        if (elite) this.itemManager.rollEliteDrop(x, y);
       },
       this.stats,
-      (x, y, damage, crit, killed) => {
+      (x, y, damage, crit, killed, enhanced) => {
         this.damageDealt += damage;
-        this.effects.hit(x, y, damage, crit, killed);
+        this.effects.hit(x, y, damage, crit, killed, enhanced);
+        if (enhanced || crit) this.audio.playSfx('critical');
         this.audio.playSfx(killed ? 'enemy_explosion' : 'enemy_hit');
         if (killed) this.hitStopMs = feedbackConfig.killHitStopMs;
       },
@@ -140,6 +185,16 @@ export class GameScene extends Phaser.Scene {
       this.enemyController,
       this.audio,
     );
+    if (this.runState) {
+      for (const [id, level] of Object.entries(this.runState.weaponLevels) as [
+        WeaponId,
+        number,
+      ][]) {
+        const current = this.weaponManager.levels[id];
+        for (let i = current; i < level; i += 1)
+          this.weaponManager.upgradeWeapon(id);
+      }
+    }
     this.enemyBullets = new EnemyBulletPool(this);
     this.enemyController.attachCombat(
       aircraft,
@@ -158,27 +213,41 @@ export class GameScene extends Phaser.Scene {
       .setOrigin(0.5);
     this.itemManager = new ItemManager(
       this,
+      aircraft,
       this.health,
       this.stats,
       this.pickups,
       this.enemyController,
       this.enemyBullets,
-      (name) => {
-        this.audio.playSfx('pickup');
-        this.showToast(name);
-        this.hpText.setText(
-          `生命 ${this.health.hp}  护盾 ${this.health.shields}`,
-        );
+      (message, maxed) => {
+        this.audio.playSfx(maxed ? 'pickup_max' : 'pickup');
+        this.showToast(message);
+        this.hud.update(this.health, this.progress);
       },
-      (exp) => this.gainExp(exp),
+      (upgraded) =>
+        this.audio.playSfx(
+          upgraded ? 'homing_missile_rapid' : 'homing_missile',
+        ),
     );
+    if (this.runState) {
+      this.itemManager.restore(
+        this.runState.electricStacks,
+        this.runState.phoenixReady,
+        this.runState.freezeMs,
+        this.runState.repairOverflow,
+        this.runState.recentDrops,
+        this.runState.missileLevel,
+        this.runState.missileOverdrive,
+      );
+    }
     this.collisionSystem = new CollisionSystem(
       this.weaponManager.bullets,
       this.enemyController,
       this.enemyBullets,
       aircraft,
       this.health,
-      (hpLost) => this.afterPlayerHit(hpLost),
+      (hpLost, shieldConsumed, sourceX, sourceY) =>
+        this.afterPlayerHit(hpLost, shieldConsumed, sourceX, sourceY),
     );
 
     this.waveManager = new WaveManager(
@@ -187,6 +256,18 @@ export class GameScene extends Phaser.Scene {
       () => this.onWavesComplete(),
     );
 
+    new GameSoundButton(this, 449, 42, settings.sfxVolume > 0, () => {
+      const manager = new SaveManager();
+      const save = manager.load();
+      save.settings.sfxVolume = save.settings.sfxVolume > 0 ? 0 : 0.7;
+      manager.save(save);
+      this.audio.setSfxVolume(save.settings.sfxVolume);
+      if (save.settings.sfxVolume > 0) {
+        AudioManager.unlock();
+        this.audio.playSfx('pickup');
+      }
+      return save.settings.sfxVolume > 0;
+    });
     this.add
       .text(505, 24, 'Ⅱ', {
         fontFamily: 'Arial',
@@ -197,6 +278,7 @@ export class GameScene extends Phaser.Scene {
       .setInteractive()
       .setDepth(50)
       .on('pointerdown', () => this.togglePause());
+    this.showLevelIntro();
     this.input.keyboard?.on('keydown-ESC', this.onEscape);
     if (import.meta.env.DEV) {
       this.debugOverlay = new DebugOverlay(
@@ -213,7 +295,7 @@ export class GameScene extends Phaser.Scene {
           upgrade: () => this.gainExp(expRequired(this.progress.level)),
           heal: () => {
             this.health.heal(100);
-            this.hpText.setText(`生命 ${this.health.hp}`);
+            this.hud.update(this.health, this.progress);
           },
           god: () => {
             this.health.godMode = !this.health.godMode;
@@ -231,6 +313,7 @@ export class GameScene extends Phaser.Scene {
       this.enemyBullets.destroy();
       this.pickups.destroy();
       this.itemManager.destroy();
+      this.shieldAura.destroy();
       this.boss?.destroy();
       this.effects.destroy();
       this.pausePanel?.destroy();
@@ -248,9 +331,12 @@ export class GameScene extends Phaser.Scene {
     }
     this.playerController.update(deltaMs);
     this.weaponManager.update(deltaMs);
-    this.enemyController.update(deltaMs * this.itemManager.enemySpeedFactor);
+    this.enemyController.update(
+      deltaMs * this.itemManager.enemySpeedFactor,
+      deltaMs,
+    );
     this.enemyBullets.update(deltaMs * this.itemManager.bulletSpeedFactor);
-    this.boss?.update(deltaMs);
+    this.boss?.update(deltaMs * this.itemManager.bossSpeedFactor);
     if (this.gameOver) return;
     if (this.stressMs > 0) {
       this.stressMs -= deltaMs;
@@ -269,9 +355,17 @@ export class GameScene extends Phaser.Scene {
       (exp) => this.gainExp(exp),
     );
     this.itemManager.update(deltaMs, this.aircraft.x, this.aircraft.y);
+    this.aircraft.setBuildVisuals(
+      this.stats,
+      this.itemManager.electricStacks,
+      this.itemManager.hasPhoenix,
+    );
+    this.shieldAura.update(deltaMs, this.aircraft, this.health);
+    AircraftMotionTrailPool.forScene(this).update(deltaMs);
     this.effects.update(deltaMs);
     this.waveManager.update(deltaMs, this.enemyController.enemies.activeCount);
     this.health.update(deltaMs);
+    this.hud.update(this.health, this.progress);
     this.elapsedTimeMs += deltaMs;
     this.aircraft.setAlpha(
       this.health.invulnerableMs > 0 &&
@@ -321,6 +415,7 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     this.time.paused = true;
+    this.game.canvas.style.filter = '';
     this.pausePanel = new PausePanel(
       this,
       () => this.togglePause(),
@@ -332,19 +427,8 @@ export class GameScene extends Phaser.Scene {
         this.time.paused = false;
         this.scene.start('MainMenuScene');
       },
-      this.audio.sfxVolume > 0,
-      () => {
-        const manager = new SaveManager();
-        const save = manager.load();
-        save.settings.sfxVolume = save.settings.sfxVolume > 0 ? 0 : 0.7;
-        manager.save(save);
-        this.audio.setSfxVolume(save.settings.sfxVolume);
-        if (save.settings.sfxVolume > 0) {
-          AudioManager.unlock();
-          this.audio.playSfx('pickup');
-        }
-        return save.settings.sfxVolume > 0;
-      },
+      this.levelId,
+      this.progress.level,
     );
   }
 
@@ -361,14 +445,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   private onWavesComplete(): void {
-    if (this.levelId !== 5) {
-      this.showLevelComplete();
-      return;
-    }
     this.enemyController.enemies.clear();
     this.enemyBullets.clear();
     const warning = this.add
-      .text(GAME_WIDTH / 2, 360, '警告\n机械雄鹰来袭', {
+      .text(GAME_WIDTH / 2, 360, `第 ${this.levelId} 关 Boss\n机械雄鹰来袭`, {
         fontFamily: 'Arial',
         fontSize: '38px',
         color: '#ff7272',
@@ -398,6 +478,7 @@ export class GameScene extends Phaser.Scene {
         this.enemyController.spawnExplosion(x, y);
         this.audio.playSfx('boss_explosion');
       },
+      getLevelConfig(this.levelId).bossHpMultiplier,
     );
     this.enemyController.boss = this.boss;
   }
@@ -407,9 +488,7 @@ export class GameScene extends Phaser.Scene {
     this.aircraft.setForm(
       this.progress.level >= 6 ? 3 : this.progress.level >= 3 ? 2 : 1,
     );
-    this.expText.setText(
-      `等级 ${this.progress.level}  经验 ${this.progress.exp}/${expRequired(this.progress.level)}`,
-    );
+    this.hud.update(this.health, this.progress);
     while (this.progress.pendingUpgrades > 0) this.autoUpgrade();
   }
 
@@ -446,7 +525,9 @@ export class GameScene extends Phaser.Scene {
 
   private showToast(message: string): void {
     const serial = ++this.toastSerial;
-    this.notificationText.setText(message);
+    this.notificationText
+      .setText(message)
+      .setFontSize(message.length > 22 ? 17 : 22);
     this.time.delayedCall(1500, () => {
       if (serial === this.toastSerial) this.notificationText.setText('');
     });
@@ -464,20 +545,104 @@ export class GameScene extends Phaser.Scene {
     if (this.gameOver) return;
     this.gameOver = true;
     this.audio.playSfx('victory');
+    if (this.levelId < 5) {
+      const manager = new SaveManager();
+      const save = manager.load();
+      save.highestUnlockedLevel = Math.max(
+        save.highestUnlockedLevel,
+        this.levelId + 1,
+      );
+      save.totalCoins += getLevelConfig(this.levelId).rewards.coins;
+      save.stats.totalKills += this.kills;
+      save.stats.totalPlayTimeMs += this.elapsedTimeMs;
+      save.stats.bossesKilled += 1;
+      manager.save(save);
+      const runState = this.snapshotRun();
+      queueMicrotask(() =>
+        this.scene.start('GameScene', { levelId: this.levelId + 1, runState }),
+      );
+      return;
+    }
     const result = this.result(true);
     queueMicrotask(() => this.scene.start('ResultScene', result));
   }
 
-  private hitPlayer(damage: number): void {
-    const hpBefore = this.health.hp;
-    if (this.health.hit(damage)) this.afterPlayerHit(hpBefore - this.health.hp);
+  private snapshotRun(): RunState {
+    return {
+      hp: this.health.hp,
+      shields: this.health.shields,
+      playerLevel: this.progress.level,
+      exp: this.progress.exp,
+      attackCores: this.stats.attackCores,
+      rapidCores: this.stats.rapidCores,
+      critCores: this.stats.critCores,
+      berserkMs: this.stats.berserkMs,
+      magnetMs: this.stats.magnetMs,
+      empArcMs: this.stats.empArcMs,
+      critStreak: this.stats.critChainState.streak,
+      guaranteedCrit: this.stats.critChainState.guaranteed,
+      weaponLevels: { ...this.weaponManager.levels },
+      electricStacks: this.itemManager.electricStacks,
+      missileLevel: this.itemManager.missileLevel,
+      missileOverdrive: this.itemManager.missileOverdrive,
+      phoenixReady: this.itemManager.hasPhoenix,
+      freezeMs: this.itemManager.freezeMs,
+      repairOverflow: this.itemManager.repairOverflowAmount,
+      recentDrops: [...this.itemManager.recentDrops],
+    };
   }
 
-  private afterPlayerHit(hpLost: number): void {
+  private showLevelIntro(): void {
+    const panel = this.add
+      .rectangle(270, 470, 400, 104, 0x0a2542, 0.88)
+      .setStrokeStyle(2, 0x66d7f4)
+      .setDepth(80);
+    const title = this.add
+      .text(270, 470, `已进入第 ${this.levelId} 关`, {
+        fontFamily: 'Microsoft YaHei, sans-serif',
+        fontSize: '35px',
+        fontStyle: 'bold',
+        color: '#f5fbff',
+      })
+      .setOrigin(0.5)
+      .setDepth(81);
+    this.time.delayedCall(2_000, () => {
+      panel.destroy();
+      title.destroy();
+    });
+  }
+
+  private hitPlayer(damage: number): void {
+    const hpBefore = this.health.hp;
+    const shieldsBefore = this.health.shields;
+    if (this.health.hit(damage))
+      this.afterPlayerHit(
+        hpBefore - this.health.hp,
+        this.health.shields < shieldsBefore,
+      );
+  }
+
+  private afterPlayerHit(
+    hpLost: number,
+    shieldConsumed = false,
+    sourceX = this.aircraft.x,
+    sourceY = this.aircraft.y,
+  ): void {
     this.damageTaken += hpLost;
+    this.aircraft.hitFeedback();
+    this.effects.playerHit(
+      this.aircraft.x + Math.max(-12, Math.min(12, sourceX - this.aircraft.x)),
+      this.aircraft.y + Math.max(-10, Math.min(10, sourceY - this.aircraft.y)),
+    );
+    if (shieldConsumed)
+      this.shieldAura.burst(
+        this.aircraft.x,
+        this.aircraft.y,
+        this.health.shields + 1,
+      );
     if (this.health.isDead && !this.itemManager.tryRevive())
       this.showGameOver();
-    this.hpText.setText(`生命 ${this.health.hp}  护盾 ${this.health.shields}`);
+    this.hud.update(this.health, this.progress);
     this.cameras.main.shake(80, 0.003);
     this.audio.playSfx('player_hit');
   }
