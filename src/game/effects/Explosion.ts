@@ -7,7 +7,7 @@ const BRIGHT_KEY = 'explosion_core_bright';
 /** 贴图直径与旧半径的换算，保持原有视觉大小 */
 const SIZE_RATIO = (explosionConfig.radius * 2) / 48;
 
-function ensureExplosionArt(scene: Phaser.Scene): void {
+export function ensureExplosionArt(scene: Phaser.Scene): void {
   canvasArt(scene, CORE_KEY, 48, 48, (ctx) => {
     radialBall(ctx, 24, 24, 24, [
       [0, 0xffffff],
