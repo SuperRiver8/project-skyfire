@@ -26,7 +26,6 @@ export class SpreadWeapon extends BaseWeapon {
   }
   fire(): void {
     this.audio.playSfx('player_shoot');
-    this.aircraft.muzzleFlash();
     const count = this.level >= 4 ? 7 : this.level >= 2 ? 5 : 3;
     const damage =
       weaponBalance.spread.damage *

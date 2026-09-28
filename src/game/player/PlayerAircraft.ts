@@ -23,7 +23,6 @@ export class PlayerAircraft extends Phaser.GameObjects.Container {
     aircraftVisuals.player,
   );
   private readonly coreGlow: Phaser.GameObjects.Arc;
-  private readonly muzzleGlows: Phaser.GameObjects.Arc[];
   private readonly critGlows: Phaser.GameObjects.Arc[];
   private readonly phoenixHalo: Phaser.GameObjects.Arc;
   private readonly missilePods: Phaser.GameObjects.Graphics;
@@ -32,7 +31,6 @@ export class PlayerAircraft extends Phaser.GameObjects.Container {
   private hitFlashMs = 0;
   private trailMs = 0;
   private coreFlashMs = 0;
-  private muzzleFlashMs = 0;
   private attackLevel = 0;
   private rapidLevel = 0;
   private critLevel = 0;
@@ -62,9 +60,6 @@ export class PlayerAircraft extends Phaser.GameObjects.Container {
       .setStrokeStyle(2, 0xffb45b, 0.8)
       .setVisible(false);
     this.coreGlow = scene.add.circle(0, -7, 6, 0x61eaff, 0.7);
-    this.muzzleGlows = [-15, 15].map((x) =>
-      scene.add.circle(x, -27, 3, 0x8feaff, 0.2),
-    );
     this.critGlows = [-24, 24].map((x) =>
       scene.add.circle(x, 6, 3, 0xd9a2ff, 0.7).setVisible(false),
     );
@@ -77,7 +72,6 @@ export class PlayerAircraft extends Phaser.GameObjects.Container {
       ...this.wingHighlights,
       this.missilePods,
       this.coreGlow,
-      ...this.muzzleGlows,
       ...this.critGlows,
     ]);
     this.add([this.shadowSoft, this.shadow, this.visual]);
@@ -101,7 +95,6 @@ export class PlayerAircraft extends Phaser.GameObjects.Container {
     this.flightMs += deltaMs;
     this.hitFlashMs = Math.max(0, this.hitFlashMs - deltaMs);
     this.coreFlashMs = Math.max(0, this.coreFlashMs - deltaMs);
-    this.muzzleFlashMs = Math.max(0, this.muzzleFlashMs - deltaMs);
     const speed = deltaMs > 0 ? (displacementX / deltaMs) * 1000 : 0;
     const verticalSpeed = deltaMs > 0 ? (displacementY / deltaMs) * 1000 : 0;
     const pose = this.visualController.update(
@@ -144,14 +137,6 @@ export class PlayerAircraft extends Phaser.GameObjects.Container {
     this.coreGlow.setAlpha(
       0.55 + this.attackLevel * 0.07 + (this.coreFlashMs > 0 ? 0.25 : 0),
     );
-    for (const glow of this.muzzleGlows) {
-      glow.setScale(
-        1 + this.rapidLevel * 0.18 + (this.muzzleFlashMs > 0 ? 0.9 : 0),
-      );
-      glow.setAlpha(
-        0.12 + this.rapidLevel * 0.06 + (this.muzzleFlashMs > 0 ? 0.35 : 0),
-      );
-    }
     for (const glow of this.critGlows)
       glow.setScale(1 + this.critLevel * 0.3 + pulse * 0.08);
     this.phoenixHalo.setScale(1 + pulse * 0.08);
@@ -238,7 +223,7 @@ export class PlayerAircraft extends Phaser.GameObjects.Container {
 
   setBuildVisuals(
     stats: PlayerStats,
-    electricStacks: number,
+    _electricStacks: number,
     phoenixReady: boolean,
   ): void {
     this.attackLevel = stats.attackCores;
@@ -269,18 +254,11 @@ export class PlayerAircraft extends Phaser.GameObjects.Container {
             ? 0xffa05f
             : 0x61eaff,
     );
-    const muzzleColor =
-      this.critLevel >= 5 ? 0xffd36a : electricStacks > 0 ? 0xa3eaff : 0x8feaff;
-    for (const glow of this.muzzleGlows) glow.setFillStyle(muzzleColor);
     for (const glow of this.critGlows) glow.setVisible(this.critLevel > 0);
     this.phoenixHalo.setVisible(phoenixReady);
   }
 
   flashCore(): void {
     this.coreFlashMs = 320;
-  }
-
-  muzzleFlash(): void {
-    this.muzzleFlashMs = 95;
   }
 }

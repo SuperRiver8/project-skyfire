@@ -34,7 +34,6 @@ export class MachineGunWeapon extends BaseWeapon {
 
   fire(): void {
     this.audio.playSfx('player_shoot');
-    this.aircraft.muzzleFlash();
     const x = this.aircraft.x;
     const y = this.aircraft.y - machineGunConfig.muzzleOffsetY;
     const damage =

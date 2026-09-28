@@ -135,7 +135,6 @@ export class MissileWeapon extends BaseWeapon {
       : Array.from(this.enemies.enemies.activeEnemies());
     if (targets.length === 0) return;
     this.audio.playSfx('missile');
-    this.aircraft.muzzleFlash();
     const count = this.level >= 4 ? 3 : this.level >= 2 ? 2 : 1;
     for (let i = 0; i < count; i += 1) {
       const target = targets[(this.targetIndex + i) % targets.length];
