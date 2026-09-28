@@ -169,6 +169,7 @@ class HomingMissile extends Phaser.GameObjects.Image {
 export class HomingMissileSystem {
   private readonly pool: ObjectPool<HomingMissile>;
   private readonly trails: Phaser.GameObjects.Graphics;
+  private hasTrails = false;
   private fireMs = 0;
   private launchSerial = 0;
   level = 0;
@@ -198,7 +199,8 @@ export class HomingMissileSystem {
   }
 
   update(deltaMs: number): void {
-    this.trails.clear();
+    if (this.hasTrails) this.trails.clear();
+    this.hasTrails = false;
     if (this.level === 0) return;
     const interval = 1000 / (this.level * 2);
     this.fireMs = Math.min(this.fireMs + deltaMs, interval * 2);
@@ -215,6 +217,7 @@ export class HomingMissileSystem {
         missile.assign(this.chooseTarget(missile.x, missile.y, missile));
       missile.advance(deltaMs, speed, turn);
       missile.drawTrail(this.trails, this.level);
+      this.hasTrails = true;
       if (
         missile.target &&
         missile.ageMs > 170 &&

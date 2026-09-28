@@ -26,7 +26,6 @@ import { ShieldAura } from '../ui/ShieldAura';
 import { DebugOverlay } from '../ui/DebugOverlay';
 import { Random } from '../utils/Random';
 import { LevelBackground } from '../visuals/LevelBackground';
-import { playVictoryBlessings } from '../visuals/VictoryBlessings';
 import type { ResultData } from './ResultScene';
 import {
   generateUpgrades,
@@ -36,7 +35,7 @@ import { GAME_WIDTH } from '../viewport';
 import { WeaponManager, type WeaponId } from '../weapons/WeaponManager';
 import type { ItemId } from '../../config/items/items';
 
-interface RunState {
+export interface RunState {
   hp: number;
   shields: number;
   playerLevel: number;
@@ -574,14 +573,21 @@ export class GameScene extends Phaser.Scene {
       save.stats.bossesKilled += 1;
       manager.save(save);
       const runState = this.snapshotRun();
-      playVictoryBlessings(this, this.levelId, () =>
-        this.scene.start('GameScene', { levelId: this.levelId + 1, runState }),
+      queueMicrotask(() =>
+        this.scene.start('VictoryBlessingScene', {
+          levelId: this.levelId,
+          nextLevelId: this.levelId + 1,
+          runState,
+        }),
       );
       return;
     }
     const result = this.result(true);
-    playVictoryBlessings(this, this.levelId, () =>
-      this.scene.start('ResultScene', result),
+    queueMicrotask(() =>
+      this.scene.start('VictoryBlessingScene', {
+        levelId: this.levelId,
+        result,
+      }),
     );
   }
 

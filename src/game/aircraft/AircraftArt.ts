@@ -39,8 +39,11 @@ const playerPalettes = {
   3: { main: 0xffc866, dark: 0x66374e, light: 0xffe9b3, accent: 0xff7a57 },
 } as const;
 
-export function ensurePlayerArt(scene: Phaser.Scene): void {
-  for (const form of [1, 2, 3] as const) {
+export function ensurePlayerArt(
+  scene: Phaser.Scene,
+  forms: readonly (1 | 2 | 3)[] = [1, 2, 3],
+): void {
+  for (const form of forms) {
     canvasArt(scene, `player_form_${form}`, SIZE, SIZE, (ctx) =>
       drawPlayerForm(ctx, form),
     );
@@ -357,8 +360,11 @@ const enemyColors: Record<EnemyArtId, [number, number, number]> = {
   tank_juggernaut: [0xc25a3a, 0x4c2618, 0xffd8b0],
 };
 
-export function ensureEnemyArt(scene: Phaser.Scene): void {
-  for (const id of Object.keys(enemyColors) as EnemyArtId[]) {
+export function ensureEnemyArt(
+  scene: Phaser.Scene,
+  ids: readonly EnemyArtId[] = Object.keys(enemyColors) as EnemyArtId[],
+): void {
+  for (const id of ids) {
     const palette = enemyColors[id];
     canvasArt(scene, `enemy_${id}`, SIZE, SIZE, (ctx) =>
       drawEnemyForm(ctx, id, palette),

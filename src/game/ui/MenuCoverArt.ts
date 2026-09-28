@@ -6,8 +6,9 @@ const CENTER = GAME_WIDTH / 2;
 
 // 封面场景直接用现有飞机纹理与矢量光效绘制，尺寸始终跟随 540×960 逻辑画布。
 export function createMenuCoverArt(scene: Phaser.Scene): void {
-  ensurePlayerArt(scene);
-  ensureEnemyArt(scene);
+  // 首页只生成封面用到的四架飞机，其余纹理进入战斗时再生成。
+  ensurePlayerArt(scene, [2]);
+  ensureEnemyArt(scene, ['zigzag', 'scout', 'tank']);
 
   const background = scene.add.graphics();
   const top = Phaser.Display.Color.ValueToColor(0x050b1c);

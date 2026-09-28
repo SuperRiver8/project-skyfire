@@ -5,6 +5,9 @@ import { GAME_HEIGHT, GAME_WIDTH } from '../viewport';
 import { canvasArt, radialBall } from '../visuals/pseudo3d';
 import { ensureExplosionArt } from '../effects/Explosion';
 import { createResultArtwork } from '../visuals/ResultArtwork';
+import victoryUrl from '../../assets/result-victory-xiaoyin.png';
+import encouragementUrl from '../../assets/result-encouragement-xiaoyin.png';
+import { RESULT_ART_KEYS } from '../visuals/ResultArtwork';
 
 export interface ResultData {
   victory: boolean;
@@ -99,6 +102,7 @@ class Fireworks {
 export class ResultScene extends Phaser.Scene {
   private result!: ResultData;
   private fireworks: Fireworks | undefined;
+  private loadingDisplay?: Phaser.GameObjects.Container;
 
   constructor() {
     super('ResultScene');
@@ -108,7 +112,36 @@ export class ResultScene extends Phaser.Scene {
     this.result = data;
   }
 
+  preload(): void {
+    const key = this.result.victory
+      ? RESULT_ART_KEYS.victory
+      : RESULT_ART_KEYS.defeat;
+    if (this.textures.exists(key)) return;
+
+    // 结算时只加载当前需要的图片，不阻塞游戏首次打开。
+    this.cameras.main.setBackgroundColor(0x071326);
+    this.loadingDisplay = this.add.container(0, 0, [
+      this.add.rectangle(
+        GAME_WIDTH / 2,
+        GAME_HEIGHT / 2,
+        GAME_WIDTH,
+        GAME_HEIGHT,
+        0x071326,
+      ),
+      this.add
+        .text(GAME_WIDTH / 2, GAME_HEIGHT / 2, '正在准备结算画面…', {
+          fontFamily: 'Microsoft YaHei, sans-serif',
+          fontSize: '25px',
+          color: '#d7edff',
+        })
+        .setOrigin(0.5),
+    ]);
+    this.load.image(key, this.result.victory ? victoryUrl : encouragementUrl);
+  }
+
   create(): void {
+    this.loadingDisplay?.destroy(true);
+    this.loadingDisplay = undefined;
     const data = this.result;
     ensureExplosionArt(this);
     const coins = data.victory ? getLevelConfig(data.levelId).rewards.coins : 0;

@@ -101,5 +101,6 @@ export class MainMenuScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () =>
       this.input.keyboard?.off('keydown-ENTER', this.onEnter),
     );
+    document.getElementById('boot-status')?.remove();
   }
 }

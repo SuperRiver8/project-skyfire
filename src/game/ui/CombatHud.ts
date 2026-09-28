@@ -9,6 +9,10 @@ export class CombatHud {
   private readonly hpText: Phaser.GameObjects.Text;
   private readonly levelText: Phaser.GameObjects.Text;
   private readonly expText: Phaser.GameObjects.Text;
+  private displayedHp?: number;
+  private displayedLevel?: number;
+  private displayedExp?: number;
+  private requiredExp = 0;
 
   constructor(scene: Phaser.Scene) {
     const labelStyle = {
@@ -53,12 +57,23 @@ export class CombatHud {
   }
 
   update(health: PlayerHealth, progress: PlayerProgress): void {
-    this.hpText.setText(`${health.hp}/${playerBalance.maxHp}`);
-    this.hpFill.width = 152 * Math.max(0, health.hp / playerBalance.maxHp);
-    this.levelText.setText(`LV ${progress.level}`);
-    const required = expRequired(progress.level);
-    this.expFill.width =
-      152 * Math.max(0, Math.min(1, progress.exp / required));
-    this.expText.setText(`${progress.exp}/${required}`);
+    // 文本纹理只在显示值变化时重建，避免战斗中每帧重复上传。
+    if (health.hp !== this.displayedHp) {
+      this.displayedHp = health.hp;
+      this.hpText.setText(`${health.hp}/${playerBalance.maxHp}`);
+      this.hpFill.width = 152 * Math.max(0, health.hp / playerBalance.maxHp);
+    }
+    const levelChanged = progress.level !== this.displayedLevel;
+    if (levelChanged) {
+      this.displayedLevel = progress.level;
+      this.requiredExp = expRequired(progress.level);
+      this.levelText.setText(`LV ${progress.level}`);
+    }
+    if (progress.exp !== this.displayedExp || levelChanged) {
+      this.displayedExp = progress.exp;
+      this.expFill.width =
+        152 * Math.max(0, Math.min(1, progress.exp / this.requiredExp));
+      this.expText.setText(`${progress.exp}/${this.requiredExp}`);
+    }
   }
 }

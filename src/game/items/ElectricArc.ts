@@ -2,10 +2,12 @@ import Phaser from 'phaser';
 import { electricArcBalance as balance } from '../../config/balance/electricArcBalance';
 import type { Enemy } from '../enemies/Enemy';
 import type { EnemyController } from '../enemies/EnemyController';
+import { selectArcTargets } from './ArcTargeting';
 
 export class ElectricArc {
   private readonly graphics: Phaser.GameObjects.Graphics;
   private attackMs = 0;
+  private hasDrawing = false;
   stacks = 0;
 
   constructor(
@@ -31,8 +33,13 @@ export class ElectricArc {
     frozen = false,
     overloaded = false,
   ): void {
+    if (this.stacks === 0) {
+      if (this.hasDrawing) this.graphics.clear();
+      this.hasDrawing = false;
+      return;
+    }
     this.graphics.clear();
-    if (this.stacks === 0) return;
+    this.hasDrawing = true;
     const width = balance.baseBarWidth + this.stacks * balance.barWidthPerStack;
     const barY = playerY - 37;
     const color = frozen ? 0xe4f8ff : 0x43d6ff;
@@ -59,22 +66,14 @@ export class ElectricArc {
     const range =
       (balance.baseRange + this.stacks * balance.rangePerStack) *
       (frozen ? 1.3 : 1);
-    const targets = Array.from(this.enemies.enemies.activeEnemies())
-      .filter(
-        (enemy) =>
-          this.isLight(enemy) &&
-          Math.hypot(enemy.x - playerX, enemy.y - barY) <= range,
-      )
-      .sort(
-        (a, b) =>
-          Math.hypot(a.x - playerX, a.y - barY) -
-          Math.hypot(b.x - playerX, b.y - barY),
-      )
-      .slice(
-        0,
-        (this.stacks >= 5 ? 3 : this.stacks >= 3 ? 2 : 1) +
-          (overloaded ? 1 : 0),
-      );
+    const targets = selectArcTargets(
+      this.enemies.enemies.activeEnemies(),
+      playerX,
+      barY,
+      range,
+      (this.stacks >= 5 ? 3 : this.stacks >= 3 ? 2 : 1) +
+        (overloaded ? 1 : 0),
+    );
     if (targets.length === 0) return;
     const beamWidth = this.stacks >= 4 ? 7 : 3 + this.stacks * 0.5;
     for (const target of targets) {
@@ -99,12 +98,17 @@ export class ElectricArc {
         const { x, y } = target;
         const killed = this.enemies.damageEnemy(target, damage);
         if (killed && this.stacks >= 5) {
-          const jump = Array.from(this.enemies.enemies.activeEnemies()).find(
-            (enemy) =>
+          let jump: Enemy | undefined;
+          for (const enemy of this.enemies.enemies.activeEnemies()) {
+            if (
               this.isLight(enemy) &&
               !targets.includes(enemy) &&
-              Math.hypot(enemy.x - x, enemy.y - y) < 95,
-          );
+              Math.hypot(enemy.x - x, enemy.y - y) < 95
+            ) {
+              jump = enemy;
+              break;
+            }
+          }
           if (jump) {
             this.graphics.lineStyle(3, color, 0.95);
             this.graphics.lineBetween(x, y, jump.x, jump.y);

@@ -8,9 +8,54 @@
     />
     <meta name="theme-color" content="#071326" />
     <title>天火计划</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        background: #071326;
+      }
+      #game {
+        position: relative;
+        width: 100%;
+        height: 100%;
+      }
+      #boot-status {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        color: #e8f7ff;
+        font:
+          20px 'Microsoft YaHei',
+          sans-serif;
+        background: radial-gradient(circle, #12324f, #071326 65%);
+      }
+      #boot-status::before {
+        content: '';
+        width: 36px;
+        height: 36px;
+        border: 3px solid #255c77;
+        border-top-color: #78ddf5;
+        border-radius: 50%;
+        animation: boot-spin 0.9s linear infinite;
+      }
+      @keyframes boot-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
   </head>
   <body>
-    <div id="game"></div>
+    <div id="game">
+      <div id="boot-status" role="status">天火计划 · 正在启动</div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

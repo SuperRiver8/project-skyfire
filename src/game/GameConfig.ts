@@ -3,6 +3,7 @@ import { BootScene } from './scenes/BootScene';
 import { GameScene } from './scenes/GameScene';
 import { MainMenuScene } from './scenes/MainMenuScene';
 import { ResultScene } from './scenes/ResultScene';
+import { VictoryBlessingScene } from './scenes/VictoryBlessingScene';
 import { GAME_HEIGHT, GAME_WIDTH } from './viewport';
 
 export const gameConfig: Phaser.Types.Core.GameConfig = {
@@ -15,5 +16,11 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
-  scene: [BootScene, MainMenuScene, GameScene, ResultScene],
+  scene: [
+    BootScene,
+    MainMenuScene,
+    GameScene,
+    VictoryBlessingScene,
+    ResultScene,
+  ],
 };

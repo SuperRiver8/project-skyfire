@@ -7,6 +7,7 @@ const COLORS = [0x59a9ff, 0x55e1e0, 0xa577ef, 0xffa74f, 0xffdd59];
 export class ShieldAura {
   private readonly graphics: Phaser.GameObjects.Graphics;
   private elapsedMs = 0;
+  private hasDrawing = false;
 
   constructor(private readonly scene: Phaser.Scene) {
     this.graphics = scene.add.graphics().setDepth(11);
@@ -36,8 +37,13 @@ export class ShieldAura {
     aircraft: PlayerAircraft,
     health: PlayerHealth,
   ): void {
+    if (health.shields === 0) {
+      if (this.hasDrawing) this.graphics.clear();
+      this.hasDrawing = false;
+      return;
+    }
     this.graphics.clear();
-    if (health.shields === 0) return;
+    this.hasDrawing = true;
     this.elapsedMs += deltaMs;
     const color = COLORS[Math.min(health.shields, 5) - 1];
     const breath = (Math.sin(this.elapsedMs / 350) + 1) / 2;

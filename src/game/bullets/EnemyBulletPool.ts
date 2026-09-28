@@ -6,6 +6,7 @@ import { EnemyBullet } from './EnemyBullet';
 export class EnemyBulletPool {
   private readonly pool: ObjectPool<EnemyBullet>;
   private readonly trails: Phaser.GameObjects.Graphics;
+  private hasTrails = false;
 
   constructor(scene: Phaser.Scene) {
     this.pool = new ObjectPool(
@@ -30,10 +31,14 @@ export class EnemyBulletPool {
   }
 
   update(deltaMs: number): void {
-    this.trails.clear();
+    if (this.hasTrails) this.trails.clear();
+    this.hasTrails = false;
     for (const bullet of this.pool.activeItems()) {
       bullet.advance(deltaMs);
-      if (bullet.isHoming) this.drawTrail(bullet);
+      if (bullet.isHoming) {
+        this.drawTrail(bullet);
+        this.hasTrails = true;
+      }
       if (bullet.isOffscreen()) this.pool.release(bullet);
     }
   }
