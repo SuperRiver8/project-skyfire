@@ -4,7 +4,7 @@ export const level03: LevelConfig = {
   id: 3,
   name: '红色警戒',
   chapter: 1,
-  backgroundId: 'city_sky',
+  backgroundId: 'red_alert',
   durationMs: 95_000,
   waves: [
     {

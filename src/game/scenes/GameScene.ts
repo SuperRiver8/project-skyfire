@@ -25,6 +25,7 @@ import { CombatHud } from '../ui/CombatHud';
 import { ShieldAura } from '../ui/ShieldAura';
 import { DebugOverlay } from '../ui/DebugOverlay';
 import { Random } from '../utils/Random';
+import { LevelBackground } from '../visuals/LevelBackground';
 import type { ResultData } from './ResultScene';
 import {
   generateUpgrades,
@@ -58,6 +59,7 @@ interface RunState {
 }
 
 export class GameScene extends Phaser.Scene {
+  private background!: LevelBackground;
   private playerController!: PlayerController;
   private weaponManager!: WeaponManager;
   private enemyController!: EnemyController;
@@ -111,6 +113,8 @@ export class GameScene extends Phaser.Scene {
     this.damageTaken = 0;
     this.elapsedTimeMs = 0;
     this.toastSerial = 0;
+    const levelConfig = getLevelConfig(this.levelId);
+    this.background = new LevelBackground(this, levelConfig.backgroundId);
     const scoreText = this.add.text(20, 22, '得分 0', {
       fontFamily: 'Arial, sans-serif',
       fontSize: '20px',
@@ -252,7 +256,7 @@ export class GameScene extends Phaser.Scene {
     );
 
     this.waveManager = new WaveManager(
-      getLevelConfig(this.levelId),
+      levelConfig,
       (id, x, y) => this.enemyController.spawn(id, x, y),
       () => this.onWavesComplete(),
     );
@@ -309,6 +313,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.background.destroy();
       this.weaponManager.destroy();
       this.enemyController.destroy();
       this.enemyBullets.destroy();
@@ -325,6 +330,7 @@ export class GameScene extends Phaser.Scene {
 
   update(_time: number, deltaMs: number): void {
     if (this.gameOver || this.pausePanel) return;
+    this.background.update(deltaMs);
     if (this.hitStopMs > 0) {
       this.hitStopMs -= deltaMs;
       this.effects.update(deltaMs);

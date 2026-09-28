@@ -4,6 +4,14 @@ import { WaveManager } from '../src/game/level/WaveManager';
 import { getLevelConfig } from '../src/game/level/LevelManager';
 
 describe('WaveManager', () => {
+  it('uses a different background for each level', () => {
+    const backgrounds = Array.from(
+      { length: 5 },
+      (_, index) => getLevelConfig(index + 1).backgroundId,
+    );
+    expect(new Set(backgrounds).size).toBe(5);
+  });
+
   it('configures a distinct boss for every playable level', () => {
     const bossIds = new Set(
       Array.from({ length: 5 }, (_, index) => index + 1).map((level) => {

@@ -12,7 +12,7 @@ describe('player movement', () => {
     expect(Math.hypot(next.x - 270, next.y - 800)).toBeCloseTo(6);
   });
 
-  it('follows a held pointer without teleporting', () => {
+  it('moves twice as fast toward a held pointer without teleporting', () => {
     const next = movePlayer(
       { x: 270, y: 800 },
       {
@@ -24,7 +24,7 @@ describe('player movement', () => {
       },
       16,
     );
-    expect(Math.hypot(next.x - 270, next.y - 800)).toBeLessThanOrEqual(4.8);
+    expect(Math.hypot(next.x - 270, next.y - 800)).toBeCloseTo(9.6);
   });
 
   it('keeps the full aircraft inside the logical viewport', () => {

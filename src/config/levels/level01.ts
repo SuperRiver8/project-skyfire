@@ -4,7 +4,7 @@ export const level01: LevelConfig = {
   id: 1,
   name: '初次升空',
   chapter: 1,
-  backgroundId: 'city_sky',
+  backgroundId: 'starfield',
   durationMs: 75_000,
   waves: [
     {

@@ -4,7 +4,7 @@ export const level02: LevelConfig = {
   id: 2,
   name: '交叉火力',
   chapter: 1,
-  backgroundId: 'city_sky',
+  backgroundId: 'neon_city',
   durationMs: 90_000,
   waves: [
     {

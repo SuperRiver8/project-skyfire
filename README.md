@@ -126,3 +126,9 @@ pnpm format:check
 ```
 
 `pnpm preview` 可预览构建产物。音效使用浏览器 Web Audio 实时合成；游戏目前没有背景音乐素材。
+
+## 部署
+
+运行 `pnpm build` 后，将 `dist` 目录中的 `index.html` 和 `assets` 目录一起上传到服务器的 `/skyfire/` 目录，访问 `https://域名/skyfire/`。构建产物使用相对资源路径，`index.html` 中的 JS 和 CSS 会从 `/skyfire/assets/` 加载。
+
+如果服务器为单页应用配置了 HTML 回退规则，需让实际存在的 `/skyfire/assets/` 文件优先按静态文件返回；不要把缺失的 JS/CSS 请求回退成 `index.html`。更新部署时应同步上传新生成的 `index.html` 与其引用的 `assets` 文件。

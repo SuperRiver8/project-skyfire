@@ -4,7 +4,7 @@ export const level04: LevelConfig = {
   id: 4,
   name: '最后防线',
   chapter: 1,
-  backgroundId: 'city_sky',
+  backgroundId: 'storm_fortress',
   durationMs: 110_000,
   waves: [
     {

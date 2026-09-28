@@ -43,7 +43,10 @@ export function movePlayer(
         (1 - Math.exp(-playerBalance.pointerFollowRate * deltaSeconds));
       const step = Math.min(
         easedDistance,
-        playerBalance.moveSpeed * speedMultiplier * deltaSeconds,
+        playerBalance.moveSpeed *
+          playerBalance.pointerMoveSpeedMultiplier *
+          speedMultiplier *
+          deltaSeconds,
       );
       x += (dx / distance) * step;
       y += (dy / distance) * step;
