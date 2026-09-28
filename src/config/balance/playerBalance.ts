@@ -1,0 +1,15 @@
+export const playerBalance = {
+  maxHp: 100,
+  pickupRadius: 80,
+  critChance: 0.05,
+  critDamageMultiplier: 1.5,
+  invulnerabilityAfterHitMs: 700,
+  collisionWidth: 20,
+  collisionHeight: 24,
+  moveSpeed: 300,
+  pointerFollowRate: 14,
+  maxDeltaMs: 50,
+  halfWidth: 40,
+  halfHeight: 40,
+  startY: 800,
+} as const;

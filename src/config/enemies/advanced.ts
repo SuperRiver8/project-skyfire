@@ -1,0 +1,52 @@
+import type { EnemyConfig } from './types';
+
+export const shooterConfig: EnemyConfig = {
+  id: 'shooter',
+  maxHp: 55,
+  speed: 88,
+  collisionDamage: 13,
+  score: 180,
+  exp: 10,
+  aiType: 'SHOOTER',
+  spriteKey: 'enemy_shooter',
+  fireIntervalMs: 1350,
+  hitbox: { width: 30, height: 30 },
+};
+export const chargerConfig: EnemyConfig = {
+  id: 'charger',
+  maxHp: 70,
+  speed: 72,
+  collisionDamage: 22,
+  score: 220,
+  exp: 12,
+  aiType: 'CHARGER',
+  spriteKey: 'enemy_charger',
+  chargeDelayMs: 650,
+  chargeSpeed: 480,
+  hitbox: { width: 28, height: 34 },
+};
+export const kamikazeConfig: EnemyConfig = {
+  id: 'kamikaze',
+  maxHp: 42,
+  speed: 150,
+  collisionDamage: 25,
+  score: 200,
+  exp: 12,
+  aiType: 'KAMIKAZE',
+  spriteKey: 'enemy_kamikaze',
+  explosionRadius: 85,
+  hitbox: { width: 30, height: 30 },
+};
+export const heavyTankConfig: EnemyConfig = {
+  id: 'heavy_tank',
+  maxHp: 260,
+  speed: 55,
+  collisionDamage: 28,
+  score: 500,
+  exp: 28,
+  aiType: 'TANK',
+  spriteKey: 'enemy_tank',
+  fireIntervalMs: 1600,
+  scale: 1.6,
+  hitbox: { width: 55, height: 55 },
+};

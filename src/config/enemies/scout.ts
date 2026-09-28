@@ -1,0 +1,14 @@
+import type { EnemyConfig } from './types';
+
+export const scoutConfig: EnemyConfig = {
+  id: 'scout',
+  maxHp: 30,
+  speed: 120,
+  collisionDamage: 10,
+  score: 100,
+  exp: 5,
+  aiType: 'STRAIGHT',
+  spriteKey: 'enemy_scout',
+  hitbox: { width: 28, height: 28 },
+  dropTableId: 'normal_enemy',
+};
