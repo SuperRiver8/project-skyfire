@@ -1,11 +1,12 @@
 import Phaser from 'phaser';
+import { canvasArt, fillLinear, fillPoly } from '../visuals/pseudo3d';
 
 export type BulletStyle = 'machine' | 'spread';
 const BULLET_WIDTH = 16;
 const BULLET_HEIGHT = 36;
-const STYLES: Record<BulletStyle, [number, number]> = {
-  machine: [0x31caff, 0xf2ffff],
-  spread: [0xff68bd, 0xffe7f7],
+const STYLES: Record<BulletStyle, [number, number, number]> = {
+  machine: [0x31caff, 0xf2ffff, 0x0e6da8],
+  spread: [0xff68bd, 0xffe7f7, 0xa3286e],
 };
 
 export class Bullet extends Phaser.GameObjects.Image {
@@ -18,18 +19,68 @@ export class Bullet extends Phaser.GameObjects.Image {
   constructor(scene: Phaser.Scene) {
     for (const style of Object.keys(STYLES) as BulletStyle[]) {
       const key = `player_bullet_${style}`;
-      if (scene.textures.exists(key)) continue;
-      const [glow, core] = STYLES[style];
-      const graphics = scene.add.graphics();
-      graphics.fillStyle(glow, 0.22);
-      graphics.fillRoundedRect(0, 4, BULLET_WIDTH, 32, 8);
-      graphics.fillStyle(glow, 0.85);
-      graphics.fillRoundedRect(3, 8, 10, 23, 5);
-      graphics.fillStyle(core);
-      graphics.fillRoundedRect(6, 4, 4, 24, 2);
-      graphics.fillTriangle(8, 0, 4, 10, 12, 10);
-      graphics.generateTexture(key, BULLET_WIDTH, BULLET_HEIGHT);
-      graphics.destroy();
+      const [glow, core, dark] = STYLES[style];
+      canvasArt(scene, key, BULLET_WIDTH, BULLET_HEIGHT, (ctx) => {
+        // 尾焰拖光（渐变消散）
+        fillLinear(
+          ctx,
+          [
+            [4.5, 4],
+            [4.5, 34],
+            [11.5, 34],
+            [11.5, 4],
+          ],
+          [
+            [0, glow, 0.7],
+            [0.55, glow, 0.35],
+            [1, glow, 0],
+          ],
+          8,
+          4,
+          8,
+          34,
+        );
+        // 弹体（纵向渐变：亮头 → 深尾）
+        fillLinear(
+          ctx,
+          [
+            [4.5, 1],
+            [4.5, 30],
+            [11.5, 30],
+            [11.5, 1],
+          ],
+          [
+            [0, 0xffffff],
+            [0.3, core],
+            [0.75, glow],
+            [1, dark],
+          ],
+          8,
+          1,
+          8,
+          30,
+        );
+        // 弹头锥
+        fillPoly(ctx, [[8, 0], [4.5, 8], [11.5, 8]], 0xffffff, 0.95);
+        // 高光芯
+        fillLinear(
+          ctx,
+          [
+            [7, 2],
+            [7, 26],
+            [8.6, 26],
+            [8.6, 2],
+          ],
+          [
+            [0, 0xffffff, 0.95],
+            [1, core, 0.5],
+          ],
+          7,
+          2,
+          8.6,
+          26,
+        );
+      });
     }
 
     super(scene, 0, 0, 'player_bullet_machine');

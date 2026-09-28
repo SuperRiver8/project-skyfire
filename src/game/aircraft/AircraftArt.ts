@@ -1,4 +1,14 @@
 import Phaser from 'phaser';
+import {
+  canvasArt,
+  fillLinear,
+  fillPoly,
+  glowBall,
+  glowPoly,
+  radialBall,
+  strokeLine,
+  type Ctx2D,
+} from '../visuals/pseudo3d';
 
 export type EnemyArtId =
   | 'scout'
@@ -13,212 +23,695 @@ export type EnemyArtId =
 
 const SIZE = 80;
 
-// 所有顶点都留在纹理内部，避免机翼或机头被纹理边界裁掉。
+// ---------------------------------------------------------------------------
+// 玩家飞机：朝上，机头在上。分层绘制（外发光 → 尾翼 → 翼下表面 → 机身
+// → 机头 → 翼上表面 → 高光 → 座舱 → 引擎 → 灯具），渐变模拟顶光。
+// ---------------------------------------------------------------------------
+
+const playerPalettes = {
+  1: { main: 0x38b8e9, dark: 0x16314f, light: 0xd9ffff, accent: 0x67eaff },
+  2: { main: 0x70e6ef, dark: 0x153950, light: 0xecffff, accent: 0x9df4ff },
+  3: { main: 0xffc866, dark: 0x66374e, light: 0xffe9b3, accent: 0xff7a57 },
+} as const;
+
 export function ensurePlayerArt(scene: Phaser.Scene): void {
   for (const form of [1, 2, 3] as const) {
-    const key = `player_form_${form}`;
-    if (scene.textures.exists(key)) continue;
-    const g = scene.add.graphics();
-    const tip = form === 1 ? 10 : form === 2 ? 5 : 2;
-    const main = form === 3 ? 0xffc866 : form === 2 ? 0x70e6ef : 0x38b8e9;
-    const dark = form === 3 ? 0x673c50 : 0x183b65;
-    const light = form === 3 ? 0xffe3a5 : 0xd7ffff;
-
-    g.fillStyle(0x061a2e, 0.9);
-    g.fillTriangle(40, 4, 20, 70, 60, 70);
-    g.fillTriangle(26, 35, tip, 65, 33, 60);
-    g.fillTriangle(54, 35, 80 - tip, 65, 47, 60);
-    if (form >= 2) {
-      g.fillTriangle(23, 44, 3, 68, 28, 62);
-      g.fillTriangle(57, 44, 77, 68, 52, 62);
-    }
-    g.fillStyle(dark);
-    g.fillTriangle(27, 34, tip, 60, 34, 57);
-    g.fillTriangle(53, 34, 80 - tip, 60, 46, 57);
-    g.fillStyle(main);
-    g.fillTriangle(40, 7, 26, 65, 54, 65);
-    g.fillTriangle(27, 38, tip + 3, 58, 34, 56);
-    g.fillTriangle(53, 38, 77 - tip, 58, 46, 56);
-    if (form >= 2) {
-      g.fillStyle(dark);
-      g.fillTriangle(25, 45, 5, 65, 29, 59);
-      g.fillTriangle(55, 45, 75, 65, 51, 59);
-      g.fillStyle(main);
-      g.fillTriangle(24, 47, 9, 62, 31, 57);
-      g.fillTriangle(56, 47, 71, 62, 49, 57);
-    }
-    g.fillStyle(light);
-    g.fillTriangle(40, 16, 34, 40, 46, 40);
-    g.fillStyle(0x0a4769);
-    g.fillTriangle(40, 24, 35, 43, 45, 43);
-    g.fillStyle(0xffffff, 0.65);
-    g.fillTriangle(40, 27, 38, 35, 41, 32);
-    g.lineStyle(2, light, 0.9);
-    g.lineBetween(40, 9, 40, 20);
-    g.lineBetween(tip + 5, 57, 28, 45);
-    g.lineBetween(75 - tip, 57, 52, 45);
-    g.fillStyle(0x1a385a);
-    g.fillRect(25, 53, 8, 17);
-    g.fillRect(47, 53, 8, 17);
-    g.fillStyle(form === 3 ? 0xff5e55 : 0x1c658c);
-    g.fillRect(17, 55, 6, 11);
-    g.fillRect(57, 55, 6, 11);
-    g.fillStyle(form === 3 ? 0xff825b : 0x67eaff);
-    g.fillTriangle(27, 69, 29, 78, 33, 69);
-    g.fillTriangle(47, 69, 51, 78, 53, 69);
-    g.fillStyle(0xffffff, 0.8);
-    g.fillRect(29, 69, 2, 5);
-    g.fillRect(49, 69, 2, 5);
-    if (form >= 2) {
-      g.fillStyle(light);
-      g.fillRect(tip + 3, 52, 6, 5);
-      g.fillRect(71 - tip, 52, 6, 5);
-    }
-    if (form === 3) {
-      g.fillStyle(0xff7a57);
-      g.fillTriangle(40, 5, 36, 18, 44, 18);
-      g.fillRect(4, 56, 5, 9);
-      g.fillRect(71, 56, 5, 9);
-      g.fillStyle(0xffe3a5);
-      g.fillTriangle(19, 47, 8, 60, 25, 54);
-      g.fillTriangle(61, 47, 72, 60, 55, 54);
-    }
-    g.generateTexture(key, SIZE, SIZE);
-    g.destroy();
+    canvasArt(scene, `player_form_${form}`, SIZE, SIZE, (ctx) =>
+      drawPlayerForm(ctx, form),
+    );
   }
 }
 
+function drawPlayerForm(ctx: Ctx2D, form: 1 | 2 | 3): void {
+  const { main, dark, light, accent } = playerPalettes[form];
+  const wingOuter = form === 2 ? 4 : form === 3 ? 6 : 9;
+
+  // 1. 整体外发光轮廓
+  glowPoly(
+    ctx,
+    [
+      [40, 3],
+      [64, 54],
+      [54, 67],
+      [45, 71],
+      [35, 71],
+      [26, 67],
+      [16, 54],
+    ],
+    main,
+    13,
+    0.4,
+  );
+
+  // 2. 尾翼（机身之后）
+  for (const side of [1, -1]) {
+    fillLinear(
+      ctx,
+      [
+        [40, 58],
+        [40 + side * 10, 73],
+        [40 + side * 4, 69],
+      ],
+      [
+        [0, main],
+        [1, dark],
+      ],
+      40,
+      58,
+      40 + side * 10,
+      73,
+    );
+  }
+
+  // 3. 机翼下表面
+  fillPoly(
+    ctx,
+    [
+      [40, 31],
+      [wingOuter, 62],
+      [wingOuter + 21, 57],
+      [40, 51],
+    ],
+    dark,
+    0.92,
+  );
+  fillPoly(
+    ctx,
+    [
+      [40, 31],
+      [80 - wingOuter, 62],
+      [80 - wingOuter - 21, 57],
+      [40, 51],
+    ],
+    dark,
+    0.92,
+  );
+
+  // 4. 机身主体（横向渐变营造圆柱感）
+  fillLinear(
+    ctx,
+    [
+      [40, 4],
+      [29, 21],
+      [25, 52],
+      [33, 67],
+      [47, 67],
+      [55, 52],
+      [51, 21],
+    ],
+    [
+      [0, dark],
+      [0.4, light],
+      [1, dark],
+    ],
+    24,
+    0,
+    56,
+    0,
+  );
+
+  // 5. 机头锥
+  fillLinear(
+    ctx,
+    [
+      [40, 3],
+      [35, 16],
+      [45, 16],
+    ],
+    [
+      [0, light],
+      [1, main],
+    ],
+    40,
+    3,
+    40,
+    16,
+  );
+
+  // 6. 机翼上表面（顶光渐变）
+  fillLinear(
+    ctx,
+    [
+      [40, 32],
+      [wingOuter + 5, 56],
+      [wingOuter + 22, 52],
+      [39, 48],
+    ],
+    [
+      [0, main],
+      [1, dark],
+    ],
+    40,
+    32,
+    40,
+    56,
+  );
+  fillLinear(
+    ctx,
+    [
+      [40, 32],
+      [80 - wingOuter - 5, 56],
+      [80 - wingOuter - 22, 52],
+      [41, 48],
+    ],
+    [
+      [0, main],
+      [1, dark],
+    ],
+    40,
+    32,
+    40,
+    56,
+  );
+
+  // 7. 机翼前沿高光
+  strokeLine(ctx, 40, 32, wingOuter + 5, 56, light, 1.8, 0.9);
+  strokeLine(ctx, 40, 32, 75 - wingOuter, 56, light, 1.8, 0.9);
+
+  // 8. 机身中线高光
+  fillPoly(ctx, [[40, 9], [37, 46], [43, 46]], 0xffffff, 0.3);
+
+  // 9. 座舱（球面渐变 + 反光点）
+  radialBall(ctx, 40, 29, 8, [
+    [0, 0xeafeff],
+    [0.4, 0x54c4ee],
+    [0.8, 0x15547e],
+    [1, 0x0a304e],
+  ]);
+  radialBall(ctx, 37.5, 26.5, 2.2, [
+    [0, 0xffffff, 0.95],
+    [1, 0xffffff, 0],
+  ]);
+
+  // 10. 引擎喷口（金属 + 内焰）
+  for (const side of [1, -1]) {
+    const x = 40 + side * 18;
+    fillLinear(
+      ctx,
+      [
+        [x - 5, 60],
+        [x - 5, 68],
+        [x + 5, 68],
+        [x + 5, 60],
+      ],
+      [
+        [0, 0x94a6be],
+        [1, 0x2c3a52],
+      ],
+      x - 5,
+      60,
+      x - 5,
+      68,
+    );
+    fillLinear(
+      ctx,
+      [
+        [x - 3, 66],
+        [x - 3, 73],
+        [x + 3, 73],
+        [x + 3, 66],
+      ],
+      [
+        [0, accent],
+        [1, main, 0.15],
+      ],
+      x,
+      66,
+      x,
+      73,
+    );
+  }
+
+  // 11. 翼尖灯
+  glowBall(ctx, wingOuter + 4, 57, 2.4, [[0, 0xffb0a0], [1, 0xc0203a]], 7);
+  glowBall(ctx, 76 - wingOuter, 57, 2.4, [[0, 0xa8ffdd], [1, 0x0e7d63]], 7);
+
+  // 12. 面板线
+  strokeLine(ctx, 30, 48, 21, 55, dark, 1, 0.6);
+  strokeLine(ctx, 50, 48, 59, 55, dark, 1, 0.6);
+
+  if (form >= 2) {
+    // 副翼 + 翼下挂载
+    fillLinear(
+      ctx,
+      [
+        [32, 44],
+        [12, 60],
+        [22, 57],
+        [35, 51],
+      ],
+      [
+        [0, main],
+        [1, dark],
+      ],
+      32,
+      44,
+      12,
+      60,
+    );
+    fillLinear(
+      ctx,
+      [
+        [48, 44],
+        [68, 60],
+        [58, 57],
+        [45, 51],
+      ],
+      [
+        [0, main],
+        [1, dark],
+      ],
+      48,
+      44,
+      68,
+      60,
+    );
+    strokeLine(ctx, 32, 44, 12, 60, light, 1.4, 0.75);
+    strokeLine(ctx, 48, 44, 68, 60, light, 1.4, 0.75);
+    fillPoly(ctx, [[17, 55], [13, 62], [21, 62]], accent, 0.95);
+    fillPoly(ctx, [[63, 55], [59, 62], [67, 62]], accent, 0.95);
+  }
+  if (form === 3) {
+    // 凤凰羽翼 + 机头金色光
+    fillLinear(
+      ctx,
+      [
+        [26, 26],
+        [6, 48],
+        [18, 45],
+        [30, 38],
+      ],
+      [
+        [0, 0xffd98f],
+        [1, dark],
+      ],
+      26,
+      26,
+      6,
+      48,
+    );
+    fillLinear(
+      ctx,
+      [
+        [54, 26],
+        [74, 48],
+        [62, 45],
+        [50, 38],
+      ],
+      [
+        [0, 0xffd98f],
+        [1, dark],
+      ],
+      54,
+      26,
+      74,
+      48,
+    );
+    strokeLine(ctx, 40, 5, 40, 14, 0xffffff, 1.5, 0.85);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 敌机：朝下，机头在下。与玩家机同样的伪 3D 分层结构，各机型保留独特轮廓。
+// ---------------------------------------------------------------------------
+
 const enemyColors: Record<EnemyArtId, [number, number, number]> = {
-  scout: [0xdf4964, 0x752943, 0xffc6b5],
-  scout_ace: [0x52d6cb, 0x235d72, 0xcaffed],
-  zigzag: [0xa773e8, 0x50317c, 0xe7d1ff],
-  zigzag_manta: [0x7c86ee, 0x343b86, 0xd5e7ff],
-  shooter: [0xe7a152, 0x765138, 0xffe0a6],
-  shooter_fortress: [0x8fafbd, 0x394f6b, 0xf0f7d1],
-  charger: [0xf15e4f, 0x813746, 0xffc2a4],
-  kamikaze: [0xe77da8, 0x713a72, 0xffd5eb],
-  tank: [0x9b8bd3, 0x454875, 0xe2d9ff],
+  scout: [0xdf4964, 0x4c2034, 0xffc6b5],
+  scout_ace: [0x52d6cb, 0x17424e, 0xcaffed],
+  zigzag: [0xa773e8, 0x3b235c, 0xe7d1ff],
+  zigzag_manta: [0x7c86ee, 0x252c5e, 0xd5e7ff],
+  shooter: [0xe7a152, 0x573a28, 0xffe0a6],
+  shooter_fortress: [0x8fafbd, 0x2d4057, 0xf0f7d1],
+  charger: [0xf15e4f, 0x572b38, 0xffc2a4],
+  kamikaze: [0xe77da8, 0x53294f, 0xffd5eb],
+  tank: [0x9b8bd3, 0x332f5c, 0xe2d9ff],
 };
 
 export function ensureEnemyArt(scene: Phaser.Scene): void {
   for (const id of Object.keys(enemyColors) as EnemyArtId[]) {
-    const key = `enemy_${id}`;
-    if (scene.textures.exists(key)) continue;
-    const [main, dark, light] = enemyColors[id];
-    const g = scene.add.graphics();
-    const family = id.startsWith('scout')
-      ? 'scout'
-      : id.startsWith('zigzag')
-        ? 'zigzag'
-        : id.startsWith('shooter')
-          ? 'shooter'
-          : id;
-    const broad = family === 'tank' || family === 'shooter';
-    const tip = broad ? 5 : family === 'zigzag' ? 3 : 10;
-    const nose = id === 'charger' ? 77 : 69;
-    // 敌机朝下，轮廓和识别灯随类型变化，弹幕密集时仍能辨认机型。
-    g.fillStyle(0x160d26, 0.9);
-    g.fillTriangle(40, nose + 3, 24, 12, 56, 12);
-    g.fillTriangle(28, 44, tip, 18, 34, 27);
-    g.fillTriangle(52, 44, 80 - tip, 18, 46, 27);
-    g.fillStyle(dark);
-    g.fillTriangle(28, 46, tip + 1, 20, 35, 31);
-    g.fillTriangle(52, 46, 79 - tip, 20, 45, 31);
-    g.fillStyle(main);
-    g.fillTriangle(40, nose, 26, 15, 54, 15);
-    g.fillTriangle(30, 44, tip + 5, 23, 35, 34);
-    g.fillTriangle(50, 44, 75 - tip, 23, 45, 34);
-    if (family === 'zigzag') {
-      g.fillStyle(dark);
-      g.fillTriangle(24, 24, 3, 8, 29, 36);
-      g.fillTriangle(56, 24, 77, 8, 51, 36);
-      g.fillStyle(light);
-      g.fillTriangle(11, 12, 22, 26, 28, 31);
-      g.fillTriangle(69, 12, 58, 26, 52, 31);
-    }
-    if (family === 'scout') {
-      g.fillStyle(light);
-      g.fillTriangle(13, 24, 24, 31, 29, 37);
-      g.fillTriangle(67, 24, 56, 31, 51, 37);
-    }
-    g.fillStyle(light);
-    g.fillTriangle(40, nose - 15, 34, 39, 46, 39);
-    g.fillStyle(0x332a51);
-    g.fillTriangle(40, nose - 19, 35, 43, 45, 43);
-    g.lineStyle(2, light, 0.9);
-    g.lineBetween(40, nose - 3, 40, nose - 14);
-    g.lineBetween(tip + 8, 25, 29, 35);
-    g.lineBetween(72 - tip, 25, 51, 35);
-    if (family === 'shooter' || family === 'tank') {
-      g.fillStyle(dark);
-      g.fillRect(8, 17, 10, 25);
-      g.fillRect(62, 17, 10, 25);
-      g.fillStyle(light);
-      g.fillRect(11, 33, 4, 12);
-      g.fillRect(65, 33, 4, 12);
-      g.fillStyle(id === 'tank' ? 0xff7c86 : 0xffe37c);
-      g.fillCircle(13, 44, 3);
-      g.fillCircle(67, 44, 3);
-    }
-    if (id === 'charger') {
-      g.fillStyle(light);
-      g.fillTriangle(40, 78, 36, 55, 44, 55);
-      g.fillTriangle(14, 20, 27, 35, 31, 44);
-      g.fillTriangle(66, 20, 53, 35, 49, 44);
-    }
-    if (id === 'kamikaze') {
-      g.fillStyle(dark);
-      g.fillTriangle(17, 18, 5, 10, 24, 39);
-      g.fillTriangle(63, 18, 75, 10, 56, 39);
-      g.fillStyle(0xffe778);
-      g.fillCircle(40, 36, 7);
-      g.fillStyle(dark);
-      g.fillCircle(40, 36, 3);
-      g.fillStyle(0xffe778);
-      g.fillCircle(17, 25, 3);
-      g.fillCircle(63, 25, 3);
-    }
-    if (id === 'tank') {
-      g.fillStyle(dark);
-      g.fillRect(23, 11, 34, 23);
-      g.fillStyle(light);
-      g.fillRect(29, 15, 22, 5);
-      g.fillStyle(0x736caa);
-      g.fillRect(20, 23, 5, 26);
-      g.fillRect(55, 23, 5, 26);
-    }
-    // 同类敌机也有独立轮廓和识别灯，编队里能一眼看出不同款式。
-    if (id === 'scout_ace') {
-      g.fillStyle(dark);
-      g.fillTriangle(26, 30, 3, 40, 34, 43);
-      g.fillTriangle(54, 30, 77, 40, 46, 43);
-      g.fillStyle(light);
-      g.fillTriangle(8, 39, 27, 35, 30, 40);
-      g.fillTriangle(72, 39, 53, 35, 50, 40);
-      g.fillCircle(40, 31, 4);
-    }
-    if (id === 'zigzag_manta') {
-      g.fillStyle(dark);
-      g.fillTriangle(28, 25, 1, 4, 22, 44);
-      g.fillTriangle(52, 25, 79, 4, 58, 44);
-      g.fillStyle(light);
-      g.fillTriangle(5, 10, 24, 30, 18, 25);
-      g.fillTriangle(75, 10, 56, 30, 62, 25);
-      g.fillRect(37, 20, 6, 12);
-    }
-    if (id === 'shooter_fortress') {
-      g.fillStyle(dark);
-      g.fillRect(3, 11, 16, 30);
-      g.fillRect(61, 11, 16, 30);
-      g.fillStyle(light);
-      g.fillRect(7, 35, 8, 13);
-      g.fillRect(65, 35, 8, 13);
-      g.fillRect(29, 19, 22, 6);
-      g.fillStyle(0xffdc81);
-      g.fillCircle(11, 46, 4);
-      g.fillCircle(69, 46, 4);
-    }
-    g.generateTexture(key, SIZE, SIZE);
-    g.destroy();
+    const palette = enemyColors[id];
+    canvasArt(scene, `enemy_${id}`, SIZE, SIZE, (ctx) =>
+      drawEnemyForm(ctx, id, palette),
+    );
+  }
+}
+
+function drawEnemyForm(
+  ctx: Ctx2D,
+  id: EnemyArtId,
+  [main, dark, light]: [number, number, number],
+): void {
+  const family = id.startsWith('scout')
+    ? 'scout'
+    : id.startsWith('zigzag')
+      ? 'zigzag'
+      : id.startsWith('shooter')
+        ? 'shooter'
+        : id;
+
+  // 1. 外发光轮廓
+  glowPoly(
+    ctx,
+    [
+      [40, 77],
+      [56, 34],
+      [54, 10],
+      [46, 5],
+      [34, 5],
+      [26, 10],
+      [24, 34],
+    ],
+    main,
+    12,
+    0.4,
+  );
+
+  // 2. 机翼下表面
+  fillPoly(ctx, [[40, 36], [12, 20], [28, 38], [40, 47]], dark, 0.92);
+  fillPoly(ctx, [[40, 36], [68, 20], [52, 38], [40, 47]], dark, 0.92);
+
+  // 3. 机身主体（横向渐变）
+  fillLinear(
+    ctx,
+    [
+      [40, 76],
+      [29, 44],
+      [26, 12],
+      [34, 6],
+      [46, 6],
+      [54, 12],
+      [51, 44],
+    ],
+    [
+      [0, dark],
+      [0.42, light],
+      [1, dark],
+    ],
+    24,
+    0,
+    56,
+    0,
+  );
+
+  // 4. 机头锥
+  fillLinear(
+    ctx,
+    [
+      [40, 76],
+      [34, 63],
+      [46, 63],
+    ],
+    [
+      [0, light],
+      [1, main],
+    ],
+    40,
+    76,
+    40,
+    63,
+  );
+
+  // 5. 机翼上表面（顶光渐变）
+  fillLinear(
+    ctx,
+    [
+      [40, 37],
+      [17, 22],
+      [29, 37],
+      [39, 44],
+    ],
+    [
+      [0, main],
+      [1, dark],
+    ],
+    40,
+    37,
+    40,
+    22,
+  );
+  fillLinear(
+    ctx,
+    [
+      [40, 37],
+      [63, 22],
+      [51, 37],
+      [41, 44],
+    ],
+    [
+      [0, main],
+      [1, dark],
+    ],
+    40,
+    37,
+    40,
+    22,
+  );
+
+  // 6. 机翼前沿高光
+  strokeLine(ctx, 40, 37, 17, 22, light, 1.6, 0.8);
+  strokeLine(ctx, 40, 37, 63, 22, light, 1.6, 0.8);
+
+  // 7. 传感器（机头附近，球面渐变 + 反光）
+  radialBall(ctx, 40, 55, 7, [
+    [0, 0xffffff],
+    [0.35, light],
+    [0.75, main],
+    [1, dark],
+  ]);
+  radialBall(ctx, 37.8, 52.8, 2, [
+    [0, 0xffffff, 0.95],
+    [1, 0xffffff, 0],
+  ]);
+
+  // 8. 顶部引擎喷口 + 焰光
+  for (const side of [1, -1]) {
+    const x = 40 + side * 13;
+    fillPoly(
+      ctx,
+      [
+        [x - 5, 4],
+        [x - 3, 9],
+        [x + 3, 9],
+        [x + 5, 4],
+      ],
+      0x221a30,
+      0.9,
+    );
+    glowBall(ctx, x, 3.5, 2, [[0, 0xffd9a0], [1, 0xff8a4f, 0]], 6);
+  }
+
+  // 9. 各机型独特结构
+  switch (family) {
+    case 'scout':
+      if (id === 'scout_ace') {
+        // 后掠大翼
+        fillLinear(
+          ctx,
+          [
+            [34, 30],
+            [6, 12],
+            [24, 24],
+            [36, 36],
+          ],
+          [
+            [0, main],
+            [1, dark],
+          ],
+          34,
+          30,
+          6,
+          12,
+        );
+        fillLinear(
+          ctx,
+          [
+            [46, 30],
+            [74, 12],
+            [56, 24],
+            [44, 36],
+          ],
+          [
+            [0, main],
+            [1, dark],
+          ],
+          46,
+          30,
+          74,
+          12,
+        );
+        strokeLine(ctx, 34, 30, 6, 12, light, 1.6, 0.8);
+        strokeLine(ctx, 46, 30, 74, 12, light, 1.6, 0.8);
+        glowBall(ctx, 40, 42, 2.2, [[0, 0xffffff], [1, light, 0]], 6);
+      } else {
+        glowBall(ctx, 13, 26, 2.2, [[0, 0xffc9c9], [1, 0xd52c45]], 6);
+        glowBall(ctx, 67, 26, 2.2, [[0, 0xd6fff1], [1, 0x18a187]], 6);
+      }
+      break;
+    case 'zigzag':
+      if (id === 'zigzag_manta') {
+        // 宽幅蝠翼
+        fillLinear(
+          ctx,
+          [
+            [34, 26],
+            [4, 4],
+            [20, 30],
+            [36, 40],
+          ],
+          [
+            [0, main],
+            [1, dark],
+          ],
+          34,
+          26,
+          4,
+          4,
+        );
+        fillLinear(
+          ctx,
+          [
+            [46, 26],
+            [76, 4],
+            [60, 30],
+            [44, 40],
+          ],
+          [
+            [0, main],
+            [1, dark],
+          ],
+          46,
+          26,
+          76,
+          4,
+        );
+        strokeLine(ctx, 34, 26, 4, 4, light, 1.8, 0.85);
+        strokeLine(ctx, 46, 26, 76, 4, light, 1.8, 0.85);
+        fillPoly(ctx, [[38, 24], [38, 32], [42, 32], [42, 24]], light, 0.8);
+      } else {
+        // 折线翼
+        fillLinear(
+          ctx,
+          [
+            [38, 34],
+            [18, 16],
+            [8, 8],
+            [26, 26],
+            [36, 38],
+          ],
+          [
+            [0, main],
+            [1, dark],
+          ],
+          38,
+          34,
+          8,
+          8,
+        );
+        fillLinear(
+          ctx,
+          [
+            [42, 34],
+            [62, 16],
+            [72, 8],
+            [54, 26],
+            [44, 38],
+          ],
+          [
+            [0, main],
+            [1, dark],
+          ],
+          42,
+          34,
+          72,
+          8,
+        );
+        strokeLine(ctx, 38, 34, 8, 8, light, 1.6, 0.8);
+        strokeLine(ctx, 42, 34, 72, 8, light, 1.6, 0.8);
+      }
+      break;
+    case 'shooter':
+      if (id === 'shooter_fortress') {
+        // 重型炮塔 + 顶装甲条
+        fillPoly(ctx, [[6, 10], [6, 36], [26, 42], [26, 16]], dark, 1);
+        fillPoly(ctx, [[74, 10], [74, 36], [54, 42], [54, 16]], dark, 1);
+        fillPoly(ctx, [[28, 16], [52, 16], [50, 21], [30, 21]], light, 0.85);
+        glowBall(ctx, 14, 38, 3, [[0, 0xfff2b8], [1, 0xf0a028]], 7);
+        glowBall(ctx, 66, 38, 3, [[0, 0xfff2b8], [1, 0xf0a028]], 7);
+      } else {
+        fillPoly(ctx, [[12, 14], [12, 34], [24, 38], [24, 18]], dark, 0.95);
+        fillPoly(ctx, [[68, 14], [68, 34], [56, 38], [56, 18]], dark, 0.95);
+        fillPoly(ctx, [[16, 30], [16, 36], [20, 36], [20, 30]], light, 0.9);
+        fillPoly(ctx, [[64, 30], [64, 36], [60, 36], [60, 30]], light, 0.9);
+        glowBall(ctx, 18, 33, 2.4, [[0, 0xfff2b8], [1, 0xf0a028]], 6);
+        glowBall(ctx, 62, 33, 2.4, [[0, 0xfff2b8], [1, 0xf0a028]], 6);
+      }
+      break;
+    case 'charger':
+      // 前铲 + 侧翼尖
+      fillLinear(
+        ctx,
+        [
+          [28, 58],
+          [22, 74],
+          [40, 72],
+          [40, 62],
+        ],
+        [
+          [0, light],
+          [1, main],
+        ],
+        28,
+        58,
+        22,
+        74,
+      );
+      fillLinear(
+        ctx,
+        [
+          [52, 58],
+          [58, 74],
+          [40, 72],
+          [40, 62],
+        ],
+        [
+          [0, light],
+          [1, main],
+        ],
+        52,
+        58,
+        58,
+        74,
+      );
+      fillPoly(ctx, [[12, 20], [26, 34], [32, 42], [26, 24]], light, 0.9);
+      fillPoly(ctx, [[68, 20], [54, 34], [48, 42], [54, 24]], light, 0.9);
+      break;
+    case 'kamikaze':
+      // 中央过载核心
+      glowBall(
+        ctx,
+        40,
+        38,
+        8,
+        [
+          [0, 0xfff3c0],
+          [0.5, 0xffc94f],
+          [1, 0xd93b2f, 0.8],
+        ],
+        10,
+      );
+      glowBall(ctx, 40, 38, 3.2, [[0, 0xffffff], [1, 0xffe9a0]], 8);
+      glowBall(ctx, 16, 24, 2.4, [[0, 0xffe2bd], [1, 0xff7d3f]], 6);
+      glowBall(ctx, 64, 24, 2.4, [[0, 0xffe2bd], [1, 0xff7d3f]], 6);
+      break;
+    case 'tank':
+      // 重装甲 + 顶部装甲板
+      fillPoly(ctx, [[22, 8], [58, 8], [54, 18], [26, 18]], dark, 1);
+      fillPoly(ctx, [[28, 11], [52, 11], [50, 15], [30, 15]], light, 0.9);
+      fillPoly(ctx, [[14, 14], [24, 44], [20, 44], [10, 14]], dark, 0.96);
+      fillPoly(ctx, [[66, 14], [56, 44], [60, 44], [70, 14]], dark, 0.96);
+      strokeLine(ctx, 16, 28, 22, 28, light, 1.5, 0.6);
+      strokeLine(ctx, 64, 28, 58, 28, light, 1.5, 0.6);
+      glowBall(ctx, 40, 46, 2.2, [[0, 0xffb4b4], [1, 0xc22a3a]], 5);
+      break;
   }
 }

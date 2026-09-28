@@ -10,6 +10,15 @@ import {
   aircraftVisuals,
 } from '../../config/aircraft/aircraftVisuals';
 import { phaseForHp, type BossPhase } from './BossPhaseController';
+import {
+  canvasArt,
+  fillLinear,
+  fillPoly,
+  glowBall,
+  glowPoly,
+  strokeLine,
+} from '../visuals/pseudo3d';
+import { ensureFlameArt, FLAME_KEY } from '../visuals/flameArt';
 
 export type BossState =
   | 'ENTER'
@@ -29,8 +38,8 @@ export class BossController {
   private readonly leftTurret: Phaser.GameObjects.Rectangle;
   private readonly rightTurret: Phaser.GameObjects.Rectangle;
   private readonly core: Phaser.GameObjects.Arc;
-  private readonly engines: Phaser.GameObjects.Ellipse[];
-  private readonly engineCores: Phaser.GameObjects.Triangle[];
+  private readonly engines: Phaser.GameObjects.Image[];
+  private readonly engineCores: Phaser.GameObjects.Image[];
   private readonly highlights: Phaser.GameObjects.Ellipse[];
   private readonly visualController = new AircraftVisualController(
     aircraftVisuals.boss,
@@ -68,42 +77,162 @@ export class BossController {
   ) {
     this.hp = Math.round(config.maxHp * hpMultiplier);
     const key = 'mechanical_eagle';
-    if (!scene.textures.exists(key)) {
-      const g = scene.add.graphics();
-      g.fillStyle(0x1b1b32);
-      g.fillTriangle(100, 7, 8, 104, 192, 104);
-      g.fillTriangle(36, 64, 5, 122, 88, 98);
-      g.fillTriangle(164, 64, 195, 122, 112, 98);
-      g.fillStyle(0x626779);
-      g.fillTriangle(100, 10, 15, 101, 185, 101);
-      g.fillStyle(0x913544);
-      g.fillTriangle(100, 23, 34, 93, 166, 93);
-      g.fillStyle(0xe04c53);
-      g.fillTriangle(100, 15, 69, 110, 131, 110);
-      g.fillStyle(0xffb06b);
-      g.fillTriangle(100, 37, 86, 70, 114, 70);
-      g.fillStyle(0x27273f);
-      g.fillRect(20, 79, 22, 29);
-      g.fillRect(158, 79, 22, 29);
-      g.fillStyle(0xff704f);
-      g.fillCircle(31, 99, 8);
-      g.fillCircle(169, 99, 8);
-      g.lineStyle(3, 0xffd1a2, 0.8);
-      g.lineBetween(100, 17, 100, 34);
-      g.lineBetween(21, 99, 76, 73);
-      g.lineBetween(179, 99, 124, 73);
-      g.generateTexture(key, 200, 130);
-      g.destroy();
-    }
+    canvasArt(scene, key, 200, 130, (ctx) => {
+      // 1. 外发光轮廓
+      glowPoly(
+        ctx,
+        [
+          [100, 8],
+          [158, 68],
+          [182, 104],
+          [122, 106],
+          [100, 96],
+          [78, 106],
+          [18, 104],
+          [42, 68],
+        ],
+        0xe04c53,
+        16,
+        0.3,
+      );
+      // 2. 机翼下表面
+      fillPoly(ctx, [[100, 58], [12, 102], [62, 96], [100, 84]], 0x12152a, 1);
+      fillPoly(ctx, [[100, 58], [188, 102], [138, 96], [100, 84]], 0x12152a, 1);
+      // 3. 机翼上表面（金属渐变）
+      fillLinear(
+        ctx,
+        [
+          [100, 55],
+          [20, 95],
+          [62, 88],
+          [100, 76],
+        ],
+        [
+          [0, 0x8b93a8],
+          [1, 0x2c3244],
+        ],
+        100,
+        55,
+        100,
+        95,
+      );
+      fillLinear(
+        ctx,
+        [
+          [100, 55],
+          [180, 95],
+          [138, 88],
+          [100, 76],
+        ],
+        [
+          [0, 0x8b93a8],
+          [1, 0x2c3244],
+        ],
+        100,
+        55,
+        100,
+        95,
+      );
+      // 4. 机身（鹰形轮廓，横向渐变圆柱感）
+      fillLinear(
+        ctx,
+        [
+          [100, 6],
+          [84, 26],
+          [74, 58],
+          [88, 98],
+          [112, 98],
+          [126, 58],
+          [116, 26],
+        ],
+        [
+          [0, 0x5d6478],
+          [0.42, 0x9aa4bb],
+          [1, 0x2a2f42],
+        ],
+        72,
+        0,
+        128,
+        0,
+      );
+      // 5. 鹰头
+      fillLinear(
+        ctx,
+        [
+          [100, 6],
+          [88, 24],
+          [112, 24],
+        ],
+        [
+          [0, 0xdfe6f2],
+          [1, 0x6e7790],
+        ],
+        100,
+        6,
+        100,
+        24,
+      );
+      // 6. 红色过载核心（发光球体）
+      glowBall(
+        ctx,
+        100,
+        46,
+        14,
+        [
+          [0, 0xffe0b0],
+          [0.45, 0xff6a4f],
+          [1, 0x912a3a],
+        ],
+        16,
+      );
+      glowBall(ctx, 100, 46, 5, [[0, 0xffffff], [1, 0xffc9a0]], 10);
+      // 7. 金色高光线
+      strokeLine(ctx, 100, 10, 100, 34, 0xffd1a2, 2, 0.85);
+      strokeLine(ctx, 30, 90, 74, 66, 0xffd1a2, 1.5, 0.6);
+      strokeLine(ctx, 170, 90, 126, 66, 0xffd1a2, 1.5, 0.6);
+      // 8. 引擎喷口（尾部两侧，发光）
+      for (const side of [1, -1]) {
+        const x = 100 + side * 52;
+        fillLinear(
+          ctx,
+          [
+            [x - 12, 86],
+            [x - 12, 104],
+            [x + 12, 104],
+            [x + 12, 86],
+          ],
+          [
+            [0, 0x5a6178],
+            [1, 0x232838],
+          ],
+          x - 12,
+          86,
+          x - 12,
+          104,
+        );
+        glowBall(ctx, x, 98, 6, [[0, 0xffd9a8], [1, 0xff704f, 0]], 12);
+      }
+      // 9. 装甲板线
+      strokeLine(ctx, 82, 64, 118, 64, 0x1b1b32, 1.5, 0.8);
+    });
     this.shadow = scene.add
       .ellipse(GAME_WIDTH / 2, 82, 160, 39, 0x020914, 0.3)
       .setDepth(4);
     this.visual = scene.add.container(GAME_WIDTH / 2, 65).setDepth(5);
+    ensureFlameArt(scene);
     this.engines = [-43, 43].map((x) =>
-      scene.add.ellipse(x, -51, 15, 34, 0xff8d5f, 0.74),
+      scene.add
+        .image(x, -51, FLAME_KEY)
+        .setFlipY(true)
+        .setTint(0xff8d5f)
+        .setAlpha(0.78),
     );
     this.engineCores = [-43, 43].map((x) =>
-      scene.add.triangle(x, -52, 0, 25, 7, 0, 14, 25, 0xffdaa0, 0.82),
+      scene.add
+        .image(x, -52, FLAME_KEY)
+        .setFlipY(true)
+        .setTint(0xffdaa0)
+        .setAlpha(0.85),
     );
     this.leftWing = scene.add.triangle(
       -69,
@@ -352,23 +481,26 @@ export class BossController {
       .setPosition(this.x + pose.shadowX, this.y + 17)
       .setAlpha(pose.shadowAlpha)
       .setScale(scale);
+    const enginePulse = Math.sin(this.stateMs / 60) * 0.07;
     for (const [index, engine] of this.engines.entries()) {
       engine
         .setPosition((index === 0 ? -43 : 43) + pose.flameX, -51)
         .setScale(
-          1 + this.phase * 0.06,
-          pose.flameScaleY * (1 + this.phase * 0.1),
-        );
-      engine.setFillStyle(
-        this.phase === 3 ? 0xff645e : 0xffa16b,
-        0.7 + this.phase * 0.06,
-      );
+          (1 + this.phase * 0.06) * 0.42 * (1 + enginePulse),
+          pose.flameScaleY * (1 + this.phase * 0.1) * 0.7,
+        )
+        .setTint(this.phase === 3 ? 0xff645e : 0xffa16b)
+        .setAlpha(0.7 + this.phase * 0.06 + enginePulse * 0.4);
     }
     for (const [index, core] of this.engineCores.entries())
       core
         .setPosition((index === 0 ? -43 : 43) + pose.flameX, -52)
-        .setScale(0.9, pose.flameScaleY * (1 + this.phase * 0.1))
-        .setFillStyle(this.phase === 3 ? 0xffe4b7 : 0xffd69b, 0.88);
+        .setScale(
+          (0.9 + enginePulse) * 0.3,
+          pose.flameScaleY * (1 + this.phase * 0.1) * 0.52,
+        )
+        .setTint(this.phase === 3 ? 0xffe4b7 : 0xffd69b)
+        .setAlpha(0.85 + Math.sin(this.stateMs / 50) * 0.1);
     this.leftWing
       .setPosition(-69 - this.phase * 3, 5)
       .setScale(pose.leftWingScaleX * (1 + this.phase * 0.04), 1);

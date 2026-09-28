@@ -9,6 +9,7 @@ import {
 } from '../aircraft/AircraftVisualController';
 import { aircraftVisuals } from '../../config/aircraft/aircraftVisuals';
 import { GAME_HEIGHT, GAME_WIDTH } from '../viewport';
+import { ensureFlameArt, FLAME_KEY } from '../visuals/flameArt';
 
 const alternateArt: Record<string, string> = {
   enemy_scout: 'enemy_scout_ace',
@@ -32,8 +33,8 @@ export class Enemy extends Phaser.GameObjects.Image {
     aircraftVisuals.light,
   );
   private readonly shadow: Phaser.GameObjects.Ellipse;
-  private readonly flame: Phaser.GameObjects.Ellipse;
-  private readonly flameCore: Phaser.GameObjects.Triangle;
+  private readonly flame: Phaser.GameObjects.Image;
+  private readonly flameCore: Phaser.GameObjects.Image;
   private readonly leftWing: Phaser.GameObjects.Ellipse;
   private readonly rightWing: Phaser.GameObjects.Ellipse;
   private readonly canopy: Phaser.GameObjects.Ellipse;
@@ -43,6 +44,7 @@ export class Enemy extends Phaser.GameObjects.Image {
 
   constructor(scene: Phaser.Scene) {
     ensureEnemyArt(scene);
+    ensureFlameArt(scene);
     super(scene, 0, 0, 'enemy_scout');
     this.setDepth(6).setActive(false).setVisible(false);
     scene.add.existing(this);
@@ -51,11 +53,13 @@ export class Enemy extends Phaser.GameObjects.Image {
       .setDepth(4)
       .setVisible(false);
     this.flame = scene.add
-      .ellipse(0, 0, 10, 23, 0xffad72, 0.8)
+      .image(0, 0, FLAME_KEY)
+      .setFlipY(true)
       .setDepth(5)
       .setVisible(false);
     this.flameCore = scene.add
-      .triangle(0, 0, 0, 23, 6, 0, 12, 23, 0xffdfaa, 0.84)
+      .image(0, 0, FLAME_KEY)
+      .setFlipY(true)
       .setDepth(5)
       .setVisible(false);
     this.leftWing = scene.add
@@ -286,14 +290,23 @@ export class Enemy extends Phaser.GameObjects.Image {
       .setPosition(this.x + pose.shadowX, this.y + 15 * scale)
       .setScale(scale * 1.1, scale)
       .setAlpha(pose.shadowAlpha);
+    const flamePulse = 0.62 + Math.sin(this.livedMs / 70) * 0.16;
     this.flame
       .setPosition(this.x + pose.flameX, this.y - 41 * scale + pose.bobY)
-      .setScale(scale, scale * pose.flameScaleY * (charging ? 1.3 : 1))
-      .setFillStyle(warning ? 0xff5353 : charging ? 0xffd483 : 0xffad72, 0.75);
+      .setScale(
+        scale * 0.28,
+        scale * 0.48 * pose.flameScaleY * (charging ? 1.3 : 1),
+      )
+      .setTint(warning ? 0xff5353 : charging ? 0xffd483 : 0xffad72)
+      .setAlpha(flamePulse * (charging ? 1.25 : 1));
     this.flameCore
       .setPosition(this.x + pose.flameX, this.y - 42 * scale + pose.bobY)
-      .setScale(scale * 0.8, scale * pose.flameScaleY * (charging ? 1.25 : 1))
-      .setFillStyle(warning ? 0xffd5aa : 0xffe1b1, 0.82);
+      .setScale(
+        scale * 0.22,
+        scale * 0.38 * pose.flameScaleY * (charging ? 1.25 : 1),
+      )
+      .setTint(warning ? 0xffd5aa : 0xffe1b1)
+      .setAlpha(0.7 + Math.sin(this.livedMs / 55) * 0.14);
     this.leftWing
       .setPosition(this.x - 24 * scale, this.y - 12 * scale + pose.bobY)
       .setRotation(pose.roll)

@@ -7,6 +7,7 @@ import type { PlayerStats } from '../player/PlayerStats';
 import { ObjectPool } from '../utils/ObjectPool';
 import { GAME_HEIGHT, GAME_WIDTH } from '../viewport';
 import { chooseMissileTarget, type MissileCandidate } from './HomingTargeting';
+import { canvasArt, fillLinear, fillPoly, strokeLine } from '../visuals/pseudo3d';
 
 type Target = Enemy | BossController;
 const BASE_DAMAGE = 24;
@@ -14,8 +15,55 @@ const BASE_SPEED = 455;
 const TURN_SPEED = 3.5;
 const BASE_RADIUS = 48;
 const MAX_ACTIVE = 40;
+const MISSILE_KEY = 'homing_missile';
 
-class HomingMissile extends Phaser.GameObjects.Triangle {
+function ensureMissileArt(scene: Phaser.Scene): void {
+  canvasArt(scene, MISSILE_KEY, 12, 26, (ctx) => {
+    // 尾焰
+    fillLinear(
+      ctx,
+      [
+        [3, 14],
+        [3, 26],
+        [9, 26],
+        [9, 14],
+      ],
+      [
+        [0, 0xffd68a, 0.9],
+        [1, 0xff8c4a, 0],
+      ],
+      6,
+      14,
+      6,
+      26,
+    );
+    // 金属弹体
+    fillLinear(
+      ctx,
+      [
+        [3, 2],
+        [3, 16],
+        [9, 16],
+        [9, 2],
+      ],
+      [
+        [0, 0xfff0d0],
+        [0.5, 0xffb870],
+        [1, 0xd2602e],
+      ],
+      6,
+      2,
+      6,
+      16,
+    );
+    // 弹头
+    fillPoly(ctx, [[6, 0], [3, 5], [9, 5]], 0xff3b30, 1);
+    // 高光
+    strokeLine(ctx, 6, 3, 6, 14, 0xffffff, 1.2, 0.8);
+  });
+}
+
+class HomingMissile extends Phaser.GameObjects.Image {
   target: Target | undefined;
   targetToken = 0;
   ageMs = 0;
@@ -24,9 +72,13 @@ class HomingMissile extends Phaser.GameObjects.Triangle {
   private readonly trailY = [0, 0, 0, 0, 0, 0];
 
   constructor(scene: Phaser.Scene) {
-    super(scene, 0, 0, 0, 15, 5, 0, 10, 15, 0xffc177);
-    this.setOrigin(0.5).setDepth(18).setActive(false).setVisible(false);
-    this.setStrokeStyle(1, 0xfff0ca);
+    ensureMissileArt(scene);
+    super(scene, 0, 0, MISSILE_KEY);
+    this.setOrigin(0.5)
+      .setDepth(18)
+      .setScale(0.75)
+      .setActive(false)
+      .setVisible(false);
     scene.add.existing(this);
   }
 

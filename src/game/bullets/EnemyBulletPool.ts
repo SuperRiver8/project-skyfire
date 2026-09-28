@@ -5,12 +5,14 @@ import { EnemyBullet } from './EnemyBullet';
 
 export class EnemyBulletPool {
   private readonly pool: ObjectPool<EnemyBullet>;
+  private readonly trails: Phaser.GameObjects.Graphics;
 
   constructor(scene: Phaser.Scene) {
     this.pool = new ObjectPool(
       () => new EnemyBullet(scene),
       enemyBulletBalance.initialPoolSize,
     );
+    this.trails = scene.add.graphics().setDepth(7);
   }
 
   fire(
@@ -25,10 +27,21 @@ export class EnemyBulletPool {
   }
 
   update(deltaMs: number): void {
+    this.trails.clear();
     for (const bullet of this.pool.activeItems()) {
       bullet.advance(deltaMs);
+      if (bullet.isHoming) this.drawTrail(bullet);
       if (bullet.isOffscreen()) this.pool.release(bullet);
     }
+  }
+
+  /** 追踪弹尾迹：外焰半透明 + 亮焰心，两段叠加出光晕感 */
+  private drawTrail(bullet: EnemyBullet): void {
+    const tail = bullet.trailTail;
+    this.trails.lineStyle(4, 0xff9a52, 0.35);
+    this.trails.lineBetween(bullet.x, bullet.y, tail.x, tail.y);
+    this.trails.lineStyle(1.6, 0xfff0c0, 0.75);
+    this.trails.lineBetween(bullet.x, bullet.y, tail.x, tail.y);
   }
 
   activeBullets(): Iterable<EnemyBullet> {
@@ -74,5 +87,6 @@ export class EnemyBulletPool {
 
   destroy(): void {
     for (const bullet of this.pool.allItems()) bullet.destroy();
+    this.trails.destroy();
   }
 }

@@ -9,11 +9,12 @@ import {
 } from '../../config/aircraft/aircraftVisuals';
 import { GAME_WIDTH } from '../viewport';
 import type { PlayerStats } from './PlayerStats';
+import { ensureFlameArt, FLAME_KEY } from '../visuals/flameArt';
 
 export class PlayerAircraft extends Phaser.GameObjects.Container {
   private readonly sprite: Phaser.GameObjects.Image;
-  private readonly engineGlow: Phaser.GameObjects.Ellipse;
-  private readonly engineFlames: Phaser.GameObjects.Ellipse[];
+  private readonly engineGlow: Phaser.GameObjects.Image;
+  private readonly engineFlames: Phaser.GameObjects.Image[];
   private readonly shadow: Phaser.GameObjects.Ellipse;
   private readonly shadowSoft: Phaser.GameObjects.Ellipse;
   private readonly visual: Phaser.GameObjects.Container;
@@ -43,9 +44,13 @@ export class PlayerAircraft extends Phaser.GameObjects.Container {
     this.shadowSoft = scene.add.ellipse(0, 16, 62, 25, 0x020a17, 0.1);
     this.shadow = scene.add.ellipse(0, 15, 46, 17, 0x020a17, 0.2);
     this.visual = scene.add.container(0, 0);
-    this.engineGlow = scene.add.ellipse(0, 35, 25, 40, 0x42cfff, 0.3);
+    ensureFlameArt(scene);
+    this.engineGlow = scene.add
+      .image(0, 35, FLAME_KEY)
+      .setTint(0x42cfff)
+      .setAlpha(0.5);
     this.engineFlames = [-10, 10].map((x) =>
-      scene.add.ellipse(x, 48, 7, 23, 0x75eaff, 0.8),
+      scene.add.image(x, 46, FLAME_KEY).setTint(0x75eaff).setAlpha(0.85),
     );
     this.engineParticles = [-11, -5, 5, 11].map((x) =>
       scene.add.circle(x, 63, 2, 0xa8f6ff, 0.7),
@@ -84,7 +89,7 @@ export class PlayerAircraft extends Phaser.GameObjects.Container {
     if (this.form === form) return;
     this.form = form;
     this.sprite.setTexture(`player_form_${form}`);
-    this.engineGlow.setFillStyle(form === 3 ? 0xff9b57 : 0x42cfff, 0.3);
+    this.engineGlow.setTint(form === 3 ? 0xff9b57 : 0x42cfff);
   }
 
   updateFlight(
@@ -114,17 +119,21 @@ export class PlayerAircraft extends Phaser.GameObjects.Container {
     this.shadowSoft.setPosition(pose.shadowX * 1.3, 17);
     this.engineGlow.setX(pose.flameX);
     const pulse = Math.sin(this.flightMs / 120);
-    this.engineGlow.setAlpha(0.2 + this.rapidLevel * 0.045 + pulse * 0.07);
+    this.engineGlow.setAlpha(0.42 + this.rapidLevel * 0.05 + pulse * 0.09);
     this.engineGlow.setScale(
-      1 + this.rapidLevel * 0.08 + pulse * 0.04,
-      pose.flameScaleY * (1 + this.rapidLevel * 0.12),
+      (1 + this.rapidLevel * 0.08 + pulse * 0.05) * 0.72,
+      pose.flameScaleY * (1 + this.rapidLevel * 0.12) * 0.9,
     );
     for (const [index, flame] of this.engineFlames.entries()) {
       flame.setX((index === 0 ? -10 : 10) + pose.flameX);
       flame.setScale(
-        1 + this.rapidLevel * 0.07,
-        pose.flameScaleY * (1 + this.rapidLevel * 0.1),
+        (1 + this.rapidLevel * 0.07) * 0.2 * (1 + pulse * 0.05),
+        pose.flameScaleY *
+          (1 + this.rapidLevel * 0.1) *
+          0.5 *
+          (1 + Math.sin(this.flightMs / 85 + index) * 0.1),
       );
+      flame.setAlpha(0.8 + Math.sin(this.flightMs / 80 + index * 2.1) * 0.14);
     }
     for (const [index, particle] of this.engineParticles.entries()) {
       const cycle = (this.flightMs * (0.09 + index * 0.01) + index * 19) % 36;
@@ -237,12 +246,11 @@ export class PlayerAircraft extends Phaser.GameObjects.Container {
       this.sprite.setTint(0xffffff).setTintMode(Phaser.TintModes.FILL);
     else if (berserkFlash) this.sprite.setTint(0xff8b59);
     else this.sprite.clearTint();
-    this.engineGlow.setFillStyle(
+    this.engineGlow.setTint(
       stats.berserkMs > 0 ? 0xff6e35 : this.form === 3 ? 0xff9b57 : 0x42cfff,
-      0.3,
     );
     const flameColor = stats.berserkMs > 0 ? 0xffa157 : 0x75eaff;
-    for (const flame of this.engineFlames) flame.setFillStyle(flameColor, 0.82);
+    for (const flame of this.engineFlames) flame.setTint(flameColor);
     for (const particle of this.engineParticles)
       particle.setFillStyle(stats.berserkMs > 0 ? 0xffcd80 : 0xa8f6ff);
     this.coreGlow.setFillStyle(

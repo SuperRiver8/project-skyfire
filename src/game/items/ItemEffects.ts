@@ -3,6 +3,7 @@ import { itemVisuals } from '../../config/items/itemVisuals';
 import { itemConfigs, type ItemId } from '../../config/items/items';
 import type { PlayerAircraft } from '../player/PlayerAircraft';
 import { GAME_HEIGHT, GAME_WIDTH } from '../viewport';
+import { ensureItemArt } from './ItemPickup';
 
 export class ItemEffects {
   private readonly freezeOverlay: Phaser.GameObjects.Rectangle;
@@ -25,9 +26,10 @@ export class ItemEffects {
 
   pickup(id: ItemId, x: number, y: number): void {
     const visual = itemVisuals[id];
+    ensureItemArt(this.scene);
     const orb = this.scene.add
-      .circle(x, y, 17, visual.color, 0.9)
-      .setStrokeStyle(2, 0xffffff)
+      .image(x, y, 'item_orb')
+      .setTint(visual.color)
       .setDepth(38);
     const glyph = this.scene.add
       .text(x, y, visual.glyph, {
