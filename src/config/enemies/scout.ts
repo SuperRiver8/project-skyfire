@@ -9,5 +9,6 @@ export const scoutConfig: EnemyConfig = {
   exp: 5,
   aiType: 'STRAIGHT',
   spriteKey: 'enemy_scout',
+  scale: 0.82,
   hitbox: { width: 28, height: 28 },
 };

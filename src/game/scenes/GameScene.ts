@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { getLevelConfig } from '../level/LevelManager';
+import { getBossConfig } from '../../config/bosses';
 import { WaveManager } from '../level/WaveManager';
 import { CollisionSystem } from '../combat/CollisionSystem';
 import { EnemyBulletPool } from '../bullets/EnemyBulletPool';
@@ -447,13 +448,20 @@ export class GameScene extends Phaser.Scene {
   private onWavesComplete(): void {
     this.enemyController.enemies.clear();
     this.enemyBullets.clear();
+    const level = getLevelConfig(this.levelId);
+    const bossName = getBossConfig(level.bossId ?? 'mechanical_eagle').name;
     const warning = this.add
-      .text(GAME_WIDTH / 2, 360, `第 ${this.levelId} 关 Boss\n机械雄鹰来袭`, {
-        fontFamily: 'Arial',
-        fontSize: '38px',
-        color: '#ff7272',
-        align: 'center',
-      })
+      .text(
+        GAME_WIDTH / 2,
+        360,
+        `第 ${this.levelId} 关 Boss\n${bossName}来袭`,
+        {
+          fontFamily: 'Arial',
+          fontSize: '38px',
+          color: '#ff7272',
+          align: 'center',
+        },
+      )
       .setOrigin(0.5)
       .setDepth(60);
     this.audio.playSfx('boss_warning');
@@ -478,6 +486,7 @@ export class GameScene extends Phaser.Scene {
         this.enemyController.spawnExplosion(x, y);
         this.audio.playSfx('boss_explosion');
       },
+      getLevelConfig(this.levelId).bossId,
       getLevelConfig(this.levelId).bossHpMultiplier,
     );
     this.enemyController.boss = this.boss;

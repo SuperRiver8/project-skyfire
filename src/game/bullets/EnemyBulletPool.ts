@@ -22,8 +22,11 @@ export class EnemyBulletPool {
     vy: number,
     damage: number,
     target?: { x: number; y: number },
-  ): void {
-    this.pool.acquire().activate(x, y, vx, vy, damage, target);
+    tint?: number,
+  ): EnemyBullet {
+    const bullet = this.pool.acquire();
+    bullet.activate(x, y, vx, vy, damage, target, tint);
+    return bullet;
   }
 
   update(deltaMs: number): void {

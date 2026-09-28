@@ -13,13 +13,18 @@ import {
 export type EnemyArtId =
   | 'scout'
   | 'scout_ace'
+  | 'scout_dart'
   | 'zigzag'
   | 'zigzag_manta'
+  | 'zigzag_wasp'
   | 'shooter'
   | 'shooter_fortress'
+  | 'shooter_sniper'
   | 'charger'
   | 'kamikaze'
-  | 'tank';
+  | 'kamikaze_nova'
+  | 'tank'
+  | 'tank_juggernaut';
 
 const SIZE = 80;
 
@@ -338,13 +343,18 @@ function drawPlayerForm(ctx: Ctx2D, form: 1 | 2 | 3): void {
 const enemyColors: Record<EnemyArtId, [number, number, number]> = {
   scout: [0xdf4964, 0x4c2034, 0xffc6b5],
   scout_ace: [0x52d6cb, 0x17424e, 0xcaffed],
+  scout_dart: [0xff8a5c, 0x5c2a2a, 0xffe0c2],
   zigzag: [0xa773e8, 0x3b235c, 0xe7d1ff],
   zigzag_manta: [0x7c86ee, 0x252c5e, 0xd5e7ff],
+  zigzag_wasp: [0xd9a23f, 0x55401a, 0xfff0b8],
   shooter: [0xe7a152, 0x573a28, 0xffe0a6],
   shooter_fortress: [0x8fafbd, 0x2d4057, 0xf0f7d1],
+  shooter_sniper: [0x6fbf5f, 0x274a26, 0xe2ffd6],
   charger: [0xf15e4f, 0x572b38, 0xffc2a4],
   kamikaze: [0xe77da8, 0x53294f, 0xffd5eb],
+  kamikaze_nova: [0xff5d4d, 0x5c1f20, 0xffd0b8],
   tank: [0x9b8bd3, 0x332f5c, 0xe2d9ff],
+  tank_juggernaut: [0xc25a3a, 0x4c2618, 0xffd8b0],
 };
 
 export function ensureEnemyArt(scene: Phaser.Scene): void {
@@ -542,6 +552,47 @@ function drawEnemyForm(
         strokeLine(ctx, 34, 30, 6, 12, light, 1.6, 0.8);
         strokeLine(ctx, 46, 30, 74, 12, light, 1.6, 0.8);
         glowBall(ctx, 40, 42, 2.2, [[0, 0xffffff], [1, light, 0]], 6);
+      } else if (id === 'scout_dart') {
+        // 细长箭形侦察机
+        fillLinear(
+          ctx,
+          [
+            [37, 30],
+            [14, 18],
+            [28, 30],
+            [35, 40],
+          ],
+          [
+            [0, main],
+            [1, dark],
+          ],
+          37,
+          30,
+          14,
+          18,
+        );
+        fillLinear(
+          ctx,
+          [
+            [43, 30],
+            [66, 18],
+            [52, 30],
+            [45, 40],
+          ],
+          [
+            [0, main],
+            [1, dark],
+          ],
+          43,
+          30,
+          66,
+          18,
+        );
+        strokeLine(ctx, 37, 30, 14, 18, light, 1.6, 0.85);
+        strokeLine(ctx, 43, 30, 66, 18, light, 1.6, 0.85);
+        // 长针鼻
+        strokeLine(ctx, 40, 74, 40, 58, light, 2.5, 0.9);
+        glowBall(ctx, 40, 55, 1.8, [[0, 0xfff4cf], [1, 0xffb14f, 0]], 6);
       } else {
         glowBall(ctx, 13, 26, 2.2, [[0, 0xffc9c9], [1, 0xd52c45]], 6);
         glowBall(ctx, 67, 26, 2.2, [[0, 0xd6fff1], [1, 0x18a187]], 6);
@@ -587,6 +638,47 @@ function drawEnemyForm(
         strokeLine(ctx, 34, 26, 4, 4, light, 1.8, 0.85);
         strokeLine(ctx, 46, 26, 76, 4, light, 1.8, 0.85);
         fillPoly(ctx, [[38, 24], [38, 32], [42, 32], [42, 24]], light, 0.8);
+      } else if (id === 'zigzag_wasp') {
+        // 黄蜂型：窄身细翼 + 尾针
+        fillLinear(
+          ctx,
+          [
+            [38, 32],
+            [20, 14],
+            [30, 26],
+            [37, 38],
+          ],
+          [
+            [0, main],
+            [1, dark],
+          ],
+          38,
+          32,
+          20,
+          14,
+        );
+        fillLinear(
+          ctx,
+          [
+            [42, 32],
+            [60, 14],
+            [50, 26],
+            [43, 38],
+          ],
+          [
+            [0, main],
+            [1, dark],
+          ],
+          42,
+          32,
+          60,
+          14,
+        );
+        strokeLine(ctx, 38, 32, 20, 14, light, 1.5, 0.8);
+        strokeLine(ctx, 42, 32, 60, 14, light, 1.5, 0.8);
+        // 尾针
+        strokeLine(ctx, 40, 75, 40, 61, light, 2.2, 0.95);
+        fillPoly(ctx, [[37, 20], [40, 26], [43, 20]], 0x2a1808, 0.9);
       } else {
         // 折线翼
         fillLinear(
@@ -637,6 +729,31 @@ function drawEnemyForm(
         fillPoly(ctx, [[28, 16], [52, 16], [50, 21], [30, 21]], light, 0.85);
         glowBall(ctx, 14, 38, 3, [[0, 0xfff2b8], [1, 0xf0a028]], 7);
         glowBall(ctx, 66, 38, 3, [[0, 0xfff2b8], [1, 0xf0a028]], 7);
+      } else if (id === 'shooter_sniper') {
+        // 狙击型：中央长炮管 + 两侧短翼
+        fillPoly(ctx, [[12, 16], [12, 32], [23, 36], [23, 20]], dark, 0.95);
+        fillPoly(ctx, [[68, 16], [68, 32], [57, 36], [57, 20]], dark, 0.95);
+        fillLinear(
+          ctx,
+          [
+            [37, 30],
+            [37, 76],
+            [43, 76],
+            [43, 30],
+          ],
+          [
+            [0, 0x9fb8a2],
+            [1, 0x2c4a2c],
+          ],
+          37,
+          30,
+          37,
+          76,
+        );
+        strokeLine(ctx, 40, 31, 40, 74, light, 1.5, 0.8);
+        glowBall(ctx, 40, 72, 2.6, [[0, 0xe8ffe0], [1, 0x3fae3f, 0]], 7);
+        glowBall(ctx, 14, 30, 2.2, [[0, 0xe8ffe0], [1, 0x3fae3f]], 6);
+        glowBall(ctx, 66, 30, 2.2, [[0, 0xe8ffe0], [1, 0x3fae3f]], 6);
       } else {
         fillPoly(ctx, [[12, 14], [12, 34], [24, 38], [24, 18]], dark, 0.95);
         fillPoly(ctx, [[68, 14], [68, 34], [56, 38], [56, 18]], dark, 0.95);
@@ -686,32 +803,96 @@ function drawEnemyForm(
       fillPoly(ctx, [[68, 20], [54, 34], [48, 42], [54, 24]], light, 0.9);
       break;
     case 'kamikaze':
-      // 中央过载核心
-      glowBall(
-        ctx,
-        40,
-        38,
-        8,
-        [
-          [0, 0xfff3c0],
-          [0.5, 0xffc94f],
-          [1, 0xd93b2f, 0.8],
-        ],
-        10,
-      );
-      glowBall(ctx, 40, 38, 3.2, [[0, 0xffffff], [1, 0xffe9a0]], 8);
-      glowBall(ctx, 16, 24, 2.4, [[0, 0xffe2bd], [1, 0xff7d3f]], 6);
-      glowBall(ctx, 64, 24, 2.4, [[0, 0xffe2bd], [1, 0xff7d3f]], 6);
+      if (id === 'kamikaze_nova') {
+        // 超载版：更大的双重光晕核心
+        glowBall(
+          ctx,
+          40,
+          38,
+          10,
+          [
+            [0, 0xfff8e0],
+            [0.4, 0xffb056],
+            [1, 0xd93b2f, 0.85],
+          ],
+          14,
+        );
+        glowBall(ctx, 40, 38, 4.5, [[0, 0xffffff], [1, 0xffe9a0]], 10);
+        glowBall(ctx, 16, 22, 2.4, [[0, 0xffe2bd], [1, 0xff7d3f]], 6);
+        glowBall(ctx, 64, 22, 2.4, [[0, 0xffe2bd], [1, 0xff7d3f]], 6);
+      } else {
+        // 中央过载核心
+        glowBall(
+          ctx,
+          40,
+          38,
+          8,
+          [
+            [0, 0xfff3c0],
+            [0.5, 0xffc94f],
+            [1, 0xd93b2f, 0.8],
+          ],
+          10,
+        );
+        glowBall(ctx, 40, 38, 3.2, [[0, 0xffffff], [1, 0xffe9a0]], 8);
+        glowBall(ctx, 16, 24, 2.4, [[0, 0xffe2bd], [1, 0xff7d3f]], 6);
+        glowBall(ctx, 64, 24, 2.4, [[0, 0xffe2bd], [1, 0xff7d3f]], 6);
+      }
       break;
     case 'tank':
-      // 重装甲 + 顶部装甲板
-      fillPoly(ctx, [[22, 8], [58, 8], [54, 18], [26, 18]], dark, 1);
-      fillPoly(ctx, [[28, 11], [52, 11], [50, 15], [30, 15]], light, 0.9);
-      fillPoly(ctx, [[14, 14], [24, 44], [20, 44], [10, 14]], dark, 0.96);
-      fillPoly(ctx, [[66, 14], [56, 44], [60, 44], [70, 14]], dark, 0.96);
-      strokeLine(ctx, 16, 28, 22, 28, light, 1.5, 0.6);
-      strokeLine(ctx, 64, 28, 58, 28, light, 1.5, 0.6);
-      glowBall(ctx, 40, 46, 2.2, [[0, 0xffb4b4], [1, 0xc22a3a]], 5);
+      if (id === 'tank_juggernaut') {
+        // 重型魔像：更宽的装甲与金色警示灯
+        fillPoly(ctx, [[20, 6], [60, 6], [56, 18], [24, 18]], dark, 1);
+        fillPoly(ctx, [[26, 9], [54, 9], [52, 14], [28, 14]], light, 0.9);
+        fillPoly(ctx, [[10, 12], [22, 46], [18, 46], [6, 12]], dark, 0.96);
+        fillPoly(ctx, [[70, 12], [58, 46], [62, 46], [74, 12]], dark, 0.96);
+        fillLinear(
+          ctx,
+          [
+            [16, 16],
+            [14, 42],
+            [22, 42],
+            [24, 16],
+          ],
+          [
+            [0, main],
+            [1, dark],
+          ],
+          16,
+          16,
+          14,
+          42,
+        );
+        fillLinear(
+          ctx,
+          [
+            [64, 16],
+            [66, 42],
+            [58, 42],
+            [56, 16],
+          ],
+          [
+            [0, main],
+            [1, dark],
+          ],
+          64,
+          16,
+          66,
+          42,
+        );
+        strokeLine(ctx, 12, 28, 20, 28, light, 1.5, 0.6);
+        strokeLine(ctx, 68, 28, 60, 28, light, 1.5, 0.6);
+        glowBall(ctx, 40, 46, 2.6, [[0, 0xffe6a8], [1, 0xe08a2c]], 6);
+      } else {
+        // 重装甲 + 顶部装甲板
+        fillPoly(ctx, [[22, 8], [58, 8], [54, 18], [26, 18]], dark, 1);
+        fillPoly(ctx, [[28, 11], [52, 11], [50, 15], [30, 15]], light, 0.9);
+        fillPoly(ctx, [[14, 14], [24, 44], [20, 44], [10, 14]], dark, 0.96);
+        fillPoly(ctx, [[66, 14], [56, 44], [60, 44], [70, 14]], dark, 0.96);
+        strokeLine(ctx, 16, 28, 22, 28, light, 1.5, 0.6);
+        strokeLine(ctx, 64, 28, 58, 28, light, 1.5, 0.6);
+        glowBall(ctx, 40, 46, 2.2, [[0, 0xffb4b4], [1, 0xc22a3a]], 5);
+      }
       break;
   }
 }

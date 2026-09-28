@@ -11,5 +11,6 @@ export const zigzagFighterConfig: EnemyConfig = {
   spriteKey: 'enemy_zigzag',
   zigzagAmplitude: 48,
   zigzagFrequency: 0.004,
+  scale: 0.95,
   hitbox: { width: 28, height: 28 },
 };

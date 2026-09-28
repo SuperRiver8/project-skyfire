@@ -120,6 +120,7 @@ export class EnemyBullet extends Phaser.GameObjects.Image {
     vy: number,
     damage: number,
     target?: { x: number; y: number },
+    tint?: number,
   ): void {
     this.setPosition(x, y);
     this.vx = vx;
@@ -129,6 +130,8 @@ export class EnemyBullet extends Phaser.GameObjects.Image {
     this.homingMs = target ? 1200 : 0;
     this.setTexture(target ? MISSILE_KEY : ORB_KEY);
     this.setRotation(target ? Math.atan2(vy, vx) - Math.PI / 2 : 0);
+    if (tint !== undefined) this.setTint(tint);
+    else this.clearTint();
     this.setActive(true).setVisible(true);
   }
 
@@ -137,6 +140,7 @@ export class EnemyBullet extends Phaser.GameObjects.Image {
     this.damage = 0;
     this.target = undefined;
     this.homingMs = 0;
+    this.clearTint();
   }
 
   isActive(): boolean {

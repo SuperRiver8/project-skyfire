@@ -4,9 +4,15 @@ import { WaveManager } from '../src/game/level/WaveManager';
 import { getLevelConfig } from '../src/game/level/LevelManager';
 
 describe('WaveManager', () => {
-  it('configures a boss for every playable level', () => {
-    for (let level = 1; level <= 5; level += 1)
-      expect(getLevelConfig(level).bossId).toBe('mechanical_eagle');
+  it('configures a distinct boss for every playable level', () => {
+    const bossIds = new Set(
+      Array.from({ length: 5 }, (_, index) => index + 1).map((level) => {
+        const bossId = getLevelConfig(level).bossId;
+        expect(bossId).toBeTruthy();
+        return bossId;
+      }),
+    );
+    expect(bossIds.size).toBe(5);
   });
   it('spawns the configured first group and starts the boss after the level duration', () => {
     let count = 0;

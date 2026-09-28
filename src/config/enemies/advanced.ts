@@ -10,6 +10,7 @@ export const shooterConfig: EnemyConfig = {
   aiType: 'SHOOTER',
   spriteKey: 'enemy_shooter',
   fireIntervalMs: 1350,
+  scale: 1.05,
   hitbox: { width: 30, height: 30 },
 };
 export const chargerConfig: EnemyConfig = {
@@ -23,6 +24,7 @@ export const chargerConfig: EnemyConfig = {
   spriteKey: 'enemy_charger',
   chargeDelayMs: 650,
   chargeSpeed: 480,
+  scale: 1.18,
   hitbox: { width: 28, height: 34 },
 };
 export const kamikazeConfig: EnemyConfig = {
@@ -35,6 +37,7 @@ export const kamikazeConfig: EnemyConfig = {
   aiType: 'KAMIKAZE',
   spriteKey: 'enemy_kamikaze',
   explosionRadius: 85,
+  scale: 0.76,
   hitbox: { width: 30, height: 30 },
 };
 export const heavyTankConfig: EnemyConfig = {

@@ -11,10 +11,16 @@ import { aircraftVisuals } from '../../config/aircraft/aircraftVisuals';
 import { GAME_HEIGHT, GAME_WIDTH } from '../viewport';
 import { ensureFlameArt, FLAME_KEY } from '../visuals/flameArt';
 
-const alternateArt: Record<string, string> = {
-  enemy_scout: 'enemy_scout_ace',
-  enemy_zigzag: 'enemy_zigzag_manta',
-  enemy_shooter: 'enemy_shooter_fortress',
+const alternateArt: Record<string, string[]> = {
+  enemy_scout: ['enemy_scout', 'enemy_scout_ace', 'enemy_scout_dart'],
+  enemy_zigzag: ['enemy_zigzag', 'enemy_zigzag_manta', 'enemy_zigzag_wasp'],
+  enemy_shooter: [
+    'enemy_shooter',
+    'enemy_shooter_fortress',
+    'enemy_shooter_sniper',
+  ],
+  enemy_kamikaze: ['enemy_kamikaze', 'enemy_kamikaze_nova'],
+  enemy_tank: ['enemy_tank', 'enemy_tank_juggernaut'],
 };
 
 export class Enemy extends Phaser.GameObjects.Image {
@@ -88,11 +94,16 @@ export class Enemy extends Phaser.GameObjects.Image {
     this.charging = false;
     this.warningMs = 0;
     this.trailMs = 0;
-    const variant = alternateArt[config.spriteKey];
+    const serial = Enemy.spawnSerial++;
+    // 同机型在多种款式之间轮换，编队外观更丰富
+    const variants = alternateArt[config.spriteKey];
     this.setTexture(
-      variant && Enemy.spawnSerial++ % 2 === 1 ? variant : config.spriteKey,
+      variants ? variants[serial % variants.length] : config.spriteKey,
     );
-    this.baseScale = config.scale ?? 1;
+    // 确定性伪随机 ±14% 体型浮动，同机型大小不尽相同（命中框不变）
+    const jitter =
+      0.86 + ((((serial + 1) * 2654435761) >>> 0) % 1000 / 1000) * 0.28;
+    this.baseScale = (config.scale ?? 1) * jitter;
     this.visualController = new AircraftVisualController(
       config.aiType === 'TANK'
         ? aircraftVisuals.heavy
