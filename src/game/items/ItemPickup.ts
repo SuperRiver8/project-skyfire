@@ -17,9 +17,9 @@ export function ensureItemArt(scene: Phaser.Scene): void {
     ]);
     radialBall(ctx, 16, 16, 11.5, [
       [0, 0xffffff],
-      [0.32, 0xe9eef6],
-      [0.68, 0x98a4b8],
-      [1, 0x3f475c],
+      [0.32, 0xffffff],
+      [0.68, 0xf0f6ff],
+      [1, 0xc9d9eb],
     ]);
     radialBall(ctx, 19, 20, 4, [
       [0, 0xffffff, 0.28],
@@ -46,6 +46,7 @@ export class ItemPickup extends Phaser.GameObjects.Container {
   itemId: ItemId = 'heal';
   private readonly halo: Phaser.GameObjects.Image;
   private readonly core: Phaser.GameObjects.Image;
+  private readonly glyphBadge: Phaser.GameObjects.Arc;
   private readonly glyph: Phaser.GameObjects.Text;
   private lifeMs = 0;
 
@@ -54,15 +55,19 @@ export class ItemPickup extends Phaser.GameObjects.Container {
     ensureItemArt(scene);
     this.halo = scene.add.image(0, 0, RING_KEY);
     this.core = scene.add.image(0, 0, ORB_KEY);
+    this.glyphBadge = scene.add
+      .circle(0, 0, 12, 0xf8fbff, 0.95)
+      .setStrokeStyle(1, 0x17344a, 0.25);
     this.glyph = scene.add
       .text(0, 0, '', {
         fontFamily: 'Microsoft YaHei, sans-serif',
-        fontSize: '15px',
+        fontSize: '17px',
         fontStyle: 'bold',
         color: '#10213a',
       })
       .setOrigin(0.5);
-    this.add([this.halo, this.core, this.glyph]);
+    // 浅色字牌让每种道具的文字都不受外层主题色影响。
+    this.add([this.halo, this.core, this.glyphBadge, this.glyph]);
     this.setDepth(12).setActive(false).setVisible(false);
     scene.add.existing(this);
   }

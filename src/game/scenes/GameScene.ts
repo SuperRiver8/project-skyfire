@@ -26,6 +26,7 @@ import { ShieldAura } from '../ui/ShieldAura';
 import { DebugOverlay } from '../ui/DebugOverlay';
 import { Random } from '../utils/Random';
 import { LevelBackground } from '../visuals/LevelBackground';
+import { prefetchArtworkForLevel } from '../visuals/ArtworkPrefetch';
 import type { ResultData } from './ResultScene';
 import {
   generateUpgrades,
@@ -326,6 +327,8 @@ export class GameScene extends Phaser.Scene {
       this.debugOverlay?.destroy();
       this.input.keyboard?.off('keydown-ESC', this.onEscape);
     });
+    // 进入战斗后再利用网络空闲时间下载插画，不拖慢初始菜单。
+    this.time.delayedCall(500, () => prefetchArtworkForLevel(this.levelId));
   }
 
   update(_time: number, deltaMs: number): void {
