@@ -8,6 +8,7 @@ export const zigzagFighterConfig: EnemyConfig = {
   score: 140,
   exp: 8,
   aiType: 'ZIGZAG',
+  fireIntervalMs: 3000,
   spriteKey: 'enemy_zigzag',
   zigzagAmplitude: 48,
   zigzagFrequency: 0.004,

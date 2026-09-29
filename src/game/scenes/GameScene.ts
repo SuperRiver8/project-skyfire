@@ -46,7 +46,6 @@ export interface RunState {
   critCores: number;
   berserkMs: number;
   magnetMs: number;
-  empArcMs: number;
   critStreak: number;
   guaranteedCrit: boolean;
   weaponLevels: Record<WeaponId, number>;
@@ -135,7 +134,6 @@ export class GameScene extends Phaser.Scene {
       this.stats.critCores = this.runState.critCores;
       this.stats.berserkMs = this.runState.berserkMs;
       this.stats.magnetMs = this.runState.magnetMs;
-      this.stats.empArcMs = this.runState.empArcMs;
       this.stats.restoreCritChain(
         this.runState.critStreak,
         this.runState.guaranteedCrit,
@@ -224,6 +222,7 @@ export class GameScene extends Phaser.Scene {
       this.stats,
       this.pickups,
       this.enemyController,
+      this.weaponManager,
       this.enemyBullets,
       (message, maxed) => {
         this.audio.playSfx(maxed ? 'pickup_max' : 'pickup');
@@ -367,7 +366,8 @@ export class GameScene extends Phaser.Scene {
     this.itemManager.update(deltaMs, this.aircraft.x, this.aircraft.y);
     this.aircraft.setBuildVisuals(
       this.stats,
-      this.itemManager.electricStacks,
+      this.itemManager.electricStacks > 0 ||
+        this.weaponManager.hasWeapon('lightning'),
       this.itemManager.hasPhoenix,
     );
     this.shieldAura.update(deltaMs, this.aircraft, this.health);
@@ -474,7 +474,7 @@ export class GameScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(60);
     this.audio.playSfx('boss_warning');
-    this.time.delayedCall(1800, () => {
+    this.time.delayedCall(1100, () => {
       warning.destroy();
       this.spawnBoss();
     });
@@ -605,7 +605,6 @@ export class GameScene extends Phaser.Scene {
       critCores: this.stats.critCores,
       berserkMs: this.stats.berserkMs,
       magnetMs: this.stats.magnetMs,
-      empArcMs: this.stats.empArcMs,
       critStreak: this.stats.critChainState.streak,
       guaranteedCrit: this.stats.critChainState.guaranteed,
       weaponLevels: { ...this.weaponManager.levels },

@@ -35,6 +35,6 @@ export const level05: LevelConfig = {
     },
   ],
   bossId: 'sky_tyrant',
-  bossHpMultiplier: 1,
+  bossHpMultiplier: 1.6,
   rewards: { coins: 180 },
 };

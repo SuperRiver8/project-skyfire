@@ -6,7 +6,6 @@ export class PlayerStats {
   critCores = 0;
   berserkMs = 0;
   magnetMs = 0;
-  empArcMs = 0;
   private combatMs = 0;
   private target: object | undefined;
   private targetStartMs = 0;
@@ -104,7 +103,6 @@ export class PlayerStats {
     this.combatMs += deltaMs;
     this.berserkMs = Math.max(0, this.berserkMs - deltaMs);
     this.magnetMs = Math.max(0, this.magnetMs - deltaMs);
-    this.empArcMs = Math.max(0, this.empArcMs - deltaMs);
     if (this.combatMs - this.targetLastMs > 900) this.target = undefined;
   }
 }

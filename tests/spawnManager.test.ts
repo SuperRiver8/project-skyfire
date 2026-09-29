@@ -14,4 +14,16 @@ describe('enemy spawn positions', () => {
       expect(spawnX(group, index)).toBeLessThanOrEqual(500);
     }
   });
+
+  it('separates a doubled custom pair', () => {
+    const group = {
+      enemyId: 'heavy_tank',
+      count: 2,
+      intervalMs: 1,
+      pattern: 'CUSTOM' as const,
+      startX: 270,
+    };
+    expect(spawnX(group, 0)).toBe(230);
+    expect(spawnX(group, 1)).toBe(310);
+  });
 });

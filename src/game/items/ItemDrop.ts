@@ -5,6 +5,7 @@ export interface DropState {
   attackCores: number;
   rapidCores: number;
   critCores: number;
+  spreadLevel: number;
   electricStacks: number;
   missileLevel: number;
   missileOverdrive: number;
@@ -27,6 +28,7 @@ export function itemWeights(
     if (value === 'attack_core' && state.attackCores >= 5) weight = 0;
     if (value === 'fire_rate_core' && state.rapidCores >= 5) weight = 0;
     if (value === 'critical_core' && state.critCores >= 5) weight = 0;
+    if (value === 'spread_gun' && state.spreadLevel >= 5) weight = 0;
     if (value === 'electric_arc' && state.electricStacks >= 5) weight = 0;
     if (value === 'homing_missile' && state.missileLevel >= 5)
       weight *= state.missileOverdrive >= 3 ? 0 : 0.3;

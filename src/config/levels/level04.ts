@@ -58,6 +58,6 @@ export const level04: LevelConfig = {
     },
   ],
   bossId: 'iron_bastion',
-  bossHpMultiplier: 0.8,
+  bossHpMultiplier: 1.3,
   rewards: { coins: 120 },
 };

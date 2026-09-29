@@ -27,7 +27,7 @@ export function spawnX(group: SpawnGroupConfig, index: number): number {
       x = GAME_WIDTH * (0.15 + ((index * 0.61803398875) % 1) * 0.7);
       break;
     case 'CUSTOM':
-      x = group.startX ?? GAME_WIDTH / 2;
+      x = (group.startX ?? GAME_WIDTH / 2) + (index - (count - 1) / 2) * 80;
       break;
   }
   const margin =

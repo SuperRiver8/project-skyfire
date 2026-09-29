@@ -10,6 +10,7 @@ import type { EnemyController } from '../enemies/EnemyController';
 import type { PlayerHealth } from '../player/PlayerHealth';
 import type { PlayerStats } from '../player/PlayerStats';
 import type { PlayerAircraft } from '../player/PlayerAircraft';
+import type { WeaponManager } from '../weapons/WeaponManager';
 import { ObjectPool } from '../utils/ObjectPool';
 import { Random } from '../utils/Random';
 import type { PickupPool } from './PickupPool';
@@ -38,6 +39,7 @@ export class ItemManager {
     private readonly stats: PlayerStats,
     private readonly expOrbs: PickupPool,
     private readonly enemies: EnemyController,
+    private readonly weapons: WeaponManager,
     private readonly enemyBullets: EnemyBulletPool,
     private readonly onItem: (message: string, maxed: boolean) => void,
     onMissileLaunch: (upgraded: boolean) => void = () => {},
@@ -63,6 +65,7 @@ export class ItemManager {
       attackCores: this.stats.attackCores,
       rapidCores: this.stats.rapidCores,
       critCores: this.stats.critCores,
+      spreadLevel: this.weapons.levels.spread_gun,
       electricStacks: this.electricArc.stacks,
       missileLevel: this.homingMissiles.level,
       missileOverdrive: this.homingMissiles.overdrive,
@@ -109,7 +112,6 @@ export class ItemManager {
       playerY,
       this.stats.attackMultiplier,
       this.freezeMs > 0,
-      this.stats.empArcMs > 0,
     );
     this.homingMissiles.update(deltaMs);
     const magnetBoost = this.stats.magnetMs > 0;
@@ -171,6 +173,13 @@ export class ItemManager {
         maxed = this.electricArc.stacks === 5;
         message = `电击能量 ${maxed ? 'MAX' : `Lv.${this.electricArc.stacks}`}`;
         break;
+      case 'spread_gun': {
+        this.weapons.upgradeWeapon('spread_gun');
+        const level = this.weapons.levels.spread_gun;
+        maxed = level === 5;
+        message = `散射枪 ${maxed ? 'MAX' : `Lv.${level}`}`;
+        break;
+      }
       case 'homing_missile':
         this.homingMissiles.addStack();
         maxed = this.homingMissiles.level === 5;
@@ -221,21 +230,6 @@ export class ItemManager {
         this.freezeMs = 5_000;
         this.effects.screenPulse(0xc7eeff, 0.4);
         message = '时间冻结  5 秒';
-        break;
-      case 'emp':
-        this.enemyBullets.clearOrdinary();
-        for (const enemy of this.enemies.enemies.activeEnemies())
-          this.enemies.damageEnemy(
-            enemy,
-            (70 + enemy.currentHp * 0.28) * (enemy.isElite ? 0.45 : 1),
-            false,
-          );
-        this.enemies.damageBoss(35, false);
-        this.enemies.boss?.interruptNormalAttack(650);
-        this.stats.empArcMs = 5_000;
-        this.effects.screenPulse(0x57caff, 0.55);
-        this.effects.empGlitch();
-        message = 'EMP  全屏脉冲 / 电击过载';
         break;
       case 'phoenix_core':
         if (this.phoenixReady) {

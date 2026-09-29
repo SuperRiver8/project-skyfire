@@ -9,7 +9,11 @@ import {
   aircraftEffectVisuals,
   aircraftVisuals,
 } from '../../config/aircraft/aircraftVisuals';
-import { phaseForHp, type BossPhase } from './BossPhaseController';
+import {
+  initialAttackElapsed,
+  phaseForHp,
+  type BossPhase,
+} from './BossPhaseController';
 import { ensureBossArt } from './BossArt';
 import { ensureFlameArt, FLAME_KEY } from '../visuals/flameArt';
 import {
@@ -364,8 +368,10 @@ export class BossController {
     const ctx = this.skillContext();
     for (const attack of this.config.attacks) {
       if (this.phase < attack.unlockPhase) continue;
-      const elapsed = (this.skillTimers.get(attack.id) ?? 0) + deltaMs;
       const interval = attack.intervalMs[this.phase - 1];
+      const elapsed =
+        (this.skillTimers.get(attack.id) ??
+          initialAttackElapsed(attack, this.phase)) + deltaMs;
       if (elapsed >= interval) {
         this.skillTimers.set(attack.id, elapsed - interval);
         const skill = bossSkills[attack.id];
@@ -432,6 +438,8 @@ export class BossController {
   private beginDeath(): void {
     this.state = 'DYING';
     this.stateMs = 0;
+    for (const effect of this.effects) effect.destroy();
+    this.effects.length = 0;
     this.bullets.clear();
     this.scene.cameras.main.shake(550, 0.009);
     // 分段爆炸让玩家能看清 Boss 被击破的过程。

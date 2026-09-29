@@ -593,6 +593,146 @@ class RoyalDomainEffect implements BossEffect {
   }
 }
 
+/** 双首交替追击：毒首和雷首轮流向玩家扇射，持续迫使玩家改变走位。 */
+class SerpentCrossfireEffect implements BossEffect {
+  private elapsed = 0;
+  private emitMs = 0;
+  private volley = 0;
+
+  update(deltaMs: number, ctx: SkillContext): boolean {
+    this.elapsed += deltaMs;
+    this.emitMs += deltaMs;
+    if (this.emitMs >= 320) {
+      this.emitMs -= 320;
+      const side = this.volley % 2 === 0 ? -1 : 1;
+      const originX = ctx.x + side * 48;
+      const originY = ctx.y + 24;
+      const base = Math.atan2(ctx.player.y - originY, ctx.player.x - originX);
+      for (let i = -1; i <= 1; i += 1) {
+        const angle = base + i * 0.16;
+        const speed = 225 + ctx.phase * 18;
+        ctx.bullets.fire(
+          originX,
+          originY,
+          Math.cos(angle) * speed,
+          Math.sin(angle) * speed,
+          11 + ctx.phase,
+          undefined,
+          side < 0 ? 0x3fd08a : 0xb060e8,
+        );
+      }
+      this.volley += 1;
+    }
+    return this.elapsed >= 1_920;
+  }
+
+  destroy(): void {}
+}
+
+/** 铁壁封锁：先标示三条危险通道，再由两翼和中央交错投射弹列。 */
+class BastionLockdownEffect implements BossEffect {
+  private readonly markers: Phaser.GameObjects.Rectangle[];
+  private readonly lanes: number[];
+  private elapsed = 0;
+  private emitMs = 0;
+  private volley = 0;
+
+  constructor(ctx: SkillContext) {
+    const centerX = Phaser.Math.Clamp(ctx.player.x, 125, GAME_WIDTH - 125);
+    this.lanes = [-90, 0, 90].map((offset) => centerX + offset);
+    this.markers = this.lanes.map((x) =>
+      ctx.scene.add
+        .rectangle(x, 480, 38, 960, 0xffbd67, 0.14)
+        .setDepth(3),
+    );
+  }
+
+  update(deltaMs: number, ctx: SkillContext): boolean {
+    this.elapsed += deltaMs;
+    if (this.elapsed < 600) {
+      for (const marker of this.markers)
+        marker.setAlpha(0.1 + Math.sin(this.elapsed / 75) * 0.06);
+      return false;
+    }
+    for (const marker of this.markers) marker.setVisible(false);
+    this.emitMs += deltaMs;
+    if (this.emitMs >= 240 && this.volley < 4) {
+      this.emitMs -= 240;
+      const laneIndexes = this.volley % 2 === 0 ? [0, 2] : [1];
+      for (const index of laneIndexes) {
+        for (const offset of [-14, 0, 14]) {
+          ctx.bullets.fire(
+            this.lanes[index] + offset,
+            ctx.y + 45,
+            0,
+            285 + ctx.phase * 25,
+            14,
+            undefined,
+            0xffbd67,
+          );
+        }
+      }
+      this.volley += 1;
+    }
+    return this.elapsed >= 1_800;
+  }
+
+  destroy(): void {
+    for (const marker of this.markers) marker.destroy();
+  }
+}
+
+/** 帝皇日冕：蓄力后连续追踪扇射，和固定方向的圣羽环形成不同走位压力。 */
+class SolarPursuitEffect implements BossEffect {
+  private readonly glow: Phaser.GameObjects.Graphics;
+  private elapsed = 0;
+  private emitMs = 0;
+  private volley = 0;
+
+  constructor(ctx: SkillContext) {
+    this.glow = ctx.scene.add.graphics().setDepth(8);
+  }
+
+  update(deltaMs: number, ctx: SkillContext): boolean {
+    this.elapsed += deltaMs;
+    this.glow.clear();
+    this.glow.lineStyle(7, 0xffd76b, 0.3);
+    this.glow.strokeCircle(
+      ctx.x,
+      ctx.y + 28,
+      22 + Math.sin(this.elapsed / 90) * 5,
+    );
+    this.glow.lineStyle(2, 0xffffff, 0.8);
+    this.glow.strokeCircle(ctx.x, ctx.y + 28, 14);
+    if (this.elapsed < 400) return false;
+    this.emitMs += deltaMs;
+    if (this.emitMs >= 180 && this.volley < 9) {
+      this.emitMs -= 180;
+      const originY = ctx.y + 35;
+      const base = Math.atan2(ctx.player.y - originY, ctx.player.x - ctx.x);
+      for (let i = -1; i <= 1; i += 1) {
+        const angle = base + i * 0.2 + Math.sin(this.volley * 0.7) * 0.08;
+        const speed = 240 + ctx.phase * 20;
+        ctx.bullets.fire(
+          ctx.x,
+          originY,
+          Math.cos(angle) * speed,
+          Math.sin(angle) * speed,
+          13 + ctx.phase,
+          undefined,
+          0xffd76b,
+        );
+      }
+      this.volley += 1;
+    }
+    return this.elapsed >= 2_200;
+  }
+
+  destroy(): void {
+    this.glow.destroy();
+  }
+}
+
 // ---------------------------------------------------------------------------
 // 技能实现
 // ---------------------------------------------------------------------------
@@ -742,6 +882,13 @@ const resonance: BossSkill = {
   },
 };
 
+/** 双首交替追击（双头蛇） */
+const serpent_crossfire: BossSkill = {
+  cast() {
+    return new SerpentCrossfireEffect();
+  },
+};
+
 /** 重炮齐射（铁壁堡垒） */
 const cannon_volley: BossSkill = {
   cast(ctx) {
@@ -791,6 +938,13 @@ const shield_matrix: BossSkill = {
   },
 };
 
+/** 三通道交错封锁（铁壁堡垒） */
+const bastion_lockdown: BossSkill = {
+  cast(ctx) {
+    return new BastionLockdownEffect(ctx);
+  },
+};
+
 /** 三引擎冲锋压制（铁壁堡垒） */
 const engine_charge: BossSkill = {
   cast(ctx) {
@@ -833,6 +987,13 @@ const holy_beam: BossSkill = {
   },
 };
 
+/** 日冕追猎（天空帝皇） */
+const solar_pursuit: BossSkill = {
+  cast(ctx) {
+    return new SolarPursuitEffect(ctx);
+  },
+};
+
 /** 凤凰再临（天空帝皇） */
 const phoenix_reborn: BossSkill = {
   cast(ctx) {
@@ -861,12 +1022,15 @@ export const bossSkills: Record<string, BossSkill> = {
   lightning_chain,
   pincer,
   resonance,
+  serpent_crossfire,
   cannon_volley,
   missile_barrage,
   shield_matrix,
+  bastion_lockdown,
   engine_charge,
   feather_storm,
   holy_beam,
+  solar_pursuit,
   phoenix_reborn,
   royal_domain,
 };

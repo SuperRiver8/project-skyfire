@@ -808,11 +808,11 @@ LEGENDARY 1%
 
 # 13. 武器槽
 
-第一版玩家可以同时拥有：
+玩家可以同时拥有所有已解锁主武器：
 
 ```text
-Main Weapons: 最大 3
-Support Weapons: 最大 2
+Main Weapons: 不限数量
+Support Weapons: 不限数量
 ```
 
 例如：
@@ -827,7 +827,7 @@ Drone
 Orbital Cannon
 ```
 
-MVP 暂时只做前 3 个主武器槽。
+当前版本不限制主武器槽数量。
 
 ---
 
@@ -1400,19 +1400,13 @@ Boss 不能被完全冻结。
 
 ---
 
-## 18.9 EMP
+## 18.9 Spread Gun
 
 ```text
-emp
+spread_gun
 ```
 
-效果：
-
-```text
-清除屏幕所有普通敌方子弹
-普通敌人受到固定大量伤害
-Boss 受到较低伤害
-```
+永久解锁或升级散射枪，与升级选择共用等级，最多 5 级。
 
 ---
 

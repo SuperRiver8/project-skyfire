@@ -5,21 +5,28 @@ export const skyTyrantConfig: BossConfig = {
   id: 'sky_tyrant',
   name: '天空帝皇',
   maxHp: 16_500,
-  phase2Threshold: 0.75,
-  phase3Threshold: 0.4,
+  phase2Threshold: 0.8,
+  phase3Threshold: 0.46,
   enterMs: 1400,
   transitionMs: 550,
   deathMs: 1300,
   displayScale: 1.18,
   attacks: [
     // 圣羽风暴（金羽刃弹幕）
-    { id: 'feather_storm', intervalMs: [2000, 1700, 1400], unlockPhase: 1 },
+    { id: 'feather_storm', intervalMs: [1900, 1550, 1250], unlockPhase: 1 },
     // 帝焰审判（贯穿光束）
-    { id: 'holy_beam', intervalMs: [4800, 4200, 3600], unlockPhase: 2 },
+    { id: 'holy_beam', intervalMs: [4800, 3900, 3200], unlockPhase: 2 },
+    // 日冕蓄力后连续追踪扇射
+    {
+      id: 'solar_pursuit',
+      intervalMs: [6500, 5000, 3900],
+      unlockPhase: 2,
+      firstCastDelayMs: 900,
+    },
     // 凤凰再临（能量羽翼残影）
-    { id: 'phoenix_reborn', intervalMs: [9000, 7500, 6000], unlockPhase: 2 },
+    { id: 'phoenix_reborn', intervalMs: [9000, 7000, 5500], unlockPhase: 2 },
     // 皇权领域（环形压制）
-    { id: 'royal_domain', intervalMs: [11000, 9000, 7000], unlockPhase: 3 },
+    { id: 'royal_domain', intervalMs: [11000, 8000, 6200], unlockPhase: 3 },
   ],
   visual: {
     engineOffsets: [-36, 36],

@@ -184,7 +184,12 @@ export class EnemyController {
         } else if (this.player && this.enemyBullets) {
           const dx = this.player.x - enemy.x,
             dy = this.player.y - enemy.y;
-          const speed = enemy.aiType === 'TANK' ? 220 : 260;
+          const speed =
+            enemy.aiType === 'TANK'
+              ? 220
+              : enemy.aiType === 'STRAIGHT'
+                ? 170
+                : 260;
           const shots = enemy.aiType === 'TANK' ? [-0.28, 0, 0.28] : [0];
           for (const angle of shots) {
             const base = Math.atan2(dy, dx) + angle;

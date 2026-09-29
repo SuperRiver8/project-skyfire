@@ -30,6 +30,7 @@ describe('homing missile targeting', () => {
       attackCores: 0,
       rapidCores: 0,
       critCores: 0,
+      spreadLevel: 0,
       electricStacks: 0,
       shields: 0,
       hpRatio: 1,

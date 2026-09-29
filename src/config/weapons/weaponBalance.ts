@@ -1,5 +1,4 @@
 export const weaponBalance = {
-  maxSlots: 3,
   spread: { intervalMs: 650, damage: 7, speed: 700, maxLevel: 5 },
   laser: {
     intervalMs: 900,
@@ -18,8 +17,8 @@ export const weaponBalance = {
   lightning: {
     intervalMs: 1100,
     damage: 22,
-    chainRadius: 155,
-    durationMs: 130,
+    chainRadius: 240,
+    durationMs: 240,
     maxLevel: 5,
   },
 } as const;

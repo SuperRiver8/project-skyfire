@@ -52,7 +52,6 @@ export function generateUpgrades(
 ): UpgradeOption[] {
   if (firstLevelUp)
     return [options.machine_gun, options.spread_gun, options.attack];
-  const owned = Object.values(levels).filter((level) => level > 0).length;
   const available = Object.values(options).filter((option) => {
     if (!(option.id in levels)) return true;
     const id = option.id as WeaponId;
@@ -61,7 +60,7 @@ export function generateUpgrades(
       id === 'machine_gun'
         ? machineGunConfig.maxLevel
         : weaponBalance[id === 'spread_gun' ? 'spread' : id].maxLevel;
-    return level > 0 ? level < maxLevel : owned < weaponBalance.maxSlots;
+    return level < maxLevel;
   });
   const picked: UpgradeOption[] = [];
   while (picked.length < 3 && available.length > 0) {

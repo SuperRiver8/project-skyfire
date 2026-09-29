@@ -19,7 +19,7 @@ export class LightningWeapon extends BaseWeapon {
     private readonly audio: AudioManager,
   ) {
     super();
-    this.lines = scene.add.graphics().setDepth(9);
+    this.lines = scene.add.graphics().setDepth(25);
   }
   protected get fireIntervalMs(): number {
     return weaponBalance.lightning.intervalMs / this.stats.fireRateMultiplier;
@@ -42,10 +42,10 @@ export class LightningWeapon extends BaseWeapon {
     const used = new Set<Enemy>();
     let x = this.aircraft.x,
       y = this.aircraft.y;
-    this.lines.clear().lineStyle(5, 0xffe37d, 0.95);
+    this.lines.clear();
     const boss = this.enemies.boss;
     if (boss?.isActive()) {
-      this.lines.lineBetween(x, y, boss.x, boss.y);
+      this.drawBolt(x, y, boss.x, boss.y);
       this.enemies.damageBoss(
         weaponBalance.lightning.damage * this.stats.attackMultiplier,
       );
@@ -65,7 +65,7 @@ export class LightningWeapon extends BaseWeapon {
       }
       if (!target) break;
       used.add(target);
-      this.lines.lineBetween(x, y, target.x, target.y);
+      this.drawBolt(x, y, target.x, target.y);
       x = target.x;
       y = target.y;
       this.enemies.damageEnemy(
@@ -77,6 +77,19 @@ export class LightningWeapon extends BaseWeapon {
     }
     this.visibleMs = weaponBalance.lightning.durationMs;
   }
+
+  private drawBolt(x1: number, y1: number, x2: number, y2: number): void {
+    // 外层辉光加白色电芯，让闪电在浅色背景和敌机群中都清晰可见。
+    this.lines.lineStyle(15, 0x31bfff, 0.28);
+    this.lines.lineBetween(x1, y1, x2, y2);
+    this.lines.lineStyle(7, 0x69ddff, 0.95);
+    this.lines.lineBetween(x1, y1, x2, y2);
+    this.lines.lineStyle(3, 0xffffff, 1);
+    this.lines.lineBetween(x1, y1, x2, y2);
+    this.lines.fillStyle(0xc9f8ff, 1);
+    this.lines.fillCircle(x2, y2, 7);
+  }
+
   override destroy(): void {
     this.lines.destroy();
   }

@@ -26,6 +26,7 @@ export class PlayerAircraft extends Phaser.GameObjects.Container {
   private readonly critGlows: Phaser.GameObjects.Arc[];
   private readonly phoenixHalo: Phaser.GameObjects.Arc;
   private readonly missilePods: Phaser.GameObjects.Graphics;
+  private readonly electricAura: Phaser.GameObjects.Graphics;
   private form = 0;
   private flightMs = 0;
   private hitFlashMs = 0;
@@ -57,6 +58,7 @@ export class PlayerAircraft extends Phaser.GameObjects.Container {
       scene.add.ellipse(x, 13, 21, 5, 0xe4ffff, 0.16),
     );
     this.missilePods = scene.add.graphics();
+    this.electricAura = scene.add.graphics();
     this.phoenixHalo = scene.add
       .circle(0, 0, 32, 0xffb45b, 0)
       .setStrokeStyle(2, 0xffb45b, 0.8)
@@ -72,6 +74,7 @@ export class PlayerAircraft extends Phaser.GameObjects.Container {
       this.sprite,
       ...this.wingHighlights,
       this.missilePods,
+      this.electricAura,
       ...this.critGlows,
     ]);
     this.add([this.shadowSoft, this.shadow, this.visual]);
@@ -220,7 +223,7 @@ export class PlayerAircraft extends Phaser.GameObjects.Container {
 
   setBuildVisuals(
     stats: PlayerStats,
-    _electricStacks: number,
+    electricActive: boolean,
     phoenixReady: boolean,
   ): void {
     this.rapidLevel = stats.rapidCores;
@@ -242,5 +245,33 @@ export class PlayerAircraft extends Phaser.GameObjects.Container {
       particle.setFillStyle(stats.berserkMs > 0 ? 0xffcd80 : 0xa8f6ff);
     for (const glow of this.critGlows) glow.setVisible(this.critLevel > 0);
     this.phoenixHalo.setVisible(phoenixReady);
+    this.drawElectricAura(electricActive);
+  }
+
+  private drawElectricAura(active: boolean): void {
+    const graphics = this.electricAura;
+    graphics.clear();
+    if (!active) return;
+    // 电弧沿机身椭圆轨道持续旋转，取代机头前方的横向电击板。
+    const time = this.flightMs / 260;
+    for (let arc = 0; arc < 3; arc += 1) {
+      let angle = time + (arc * Math.PI * 2) / 3;
+      let x = Math.cos(angle) * 37;
+      let y = Math.sin(angle) * 26 - 5;
+      for (let segment = 0; segment < 7; segment += 1) {
+        angle += 0.24;
+        const jitter = Math.sin(time * 3 + arc * 4 + segment * 2) * 3;
+        const nextX = Math.cos(angle) * (37 + jitter);
+        const nextY = Math.sin(angle) * (26 + jitter * 0.5) - 5;
+        graphics.lineStyle(7, 0x39cfff, 0.22);
+        graphics.lineBetween(x, y, nextX, nextY);
+        graphics.lineStyle(2, 0xe7fbff, 0.92);
+        graphics.lineBetween(x, y, nextX, nextY);
+        x = nextX;
+        y = nextY;
+      }
+      graphics.fillStyle(0xb9f5ff, 0.9);
+      graphics.fillCircle(x, y, 3);
+    }
   }
 }

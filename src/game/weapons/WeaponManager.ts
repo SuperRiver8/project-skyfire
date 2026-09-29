@@ -1,6 +1,5 @@
 import type Phaser from 'phaser';
 import { machineGunConfig } from '../../config/weapons/machineGun';
-import { weaponBalance } from '../../config/weapons/weaponBalance';
 import { BulletPool } from '../bullets/BulletPool';
 import type { AudioManager } from '../audio/AudioManager';
 import type { EnemyController } from '../enemies/EnemyController';
@@ -52,13 +51,16 @@ export class WeaponManager {
     };
   }
 
+  hasWeapon(id: WeaponId): boolean {
+    return this.weapons.has(id);
+  }
+
   upgradeWeapon(id: WeaponId): void {
     const existing = this.weapons.get(id);
     if (existing) {
       existing.upgrade();
       return;
     }
-    if (this.weapons.size >= weaponBalance.maxSlots) return;
     switch (id) {
       case 'spread_gun':
         this.weapons.set(

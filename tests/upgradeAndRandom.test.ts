@@ -17,14 +17,14 @@ describe('upgrade choices', () => {
     ]);
   });
 
-  it('does not offer maxed weapons or new slots when full', () => {
+  it('allows new weapons after three are equipped, but excludes maxed weapons', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0);
     const choices = generateUpgrades(
       { machine_gun: 5, spread_gun: 5, laser: 1, missile: 0, lightning: 0 },
       false,
     );
     expect(choices).toHaveLength(3);
-    expect(choices.map((choice) => choice.id)).not.toContain('missile');
+    expect(choices.map((choice) => choice.id)).toContain('missile');
     expect(choices.map((choice) => choice.id)).not.toContain('machine_gun');
     expect(new Set(choices.map((choice) => choice.id)).size).toBe(3);
   });

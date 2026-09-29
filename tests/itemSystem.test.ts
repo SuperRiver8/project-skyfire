@@ -8,6 +8,7 @@ const baseDrop: DropState = {
   attackCores: 0,
   rapidCores: 0,
   critCores: 0,
+  spreadLevel: 0,
   electricStacks: 0,
   missileLevel: 0,
   missileOverdrive: 0,
@@ -22,7 +23,17 @@ describe('item drop rules', () => {
     const totals = { Common: 0, Rare: 0, Epic: 0, Legendary: 0 };
     for (const { value, weight } of itemWeights(baseDrop))
       totals[itemConfigs[value].rarity] += weight;
-    expect(totals).toEqual({ Common: 58, Rare: 27, Epic: 12, Legendary: 3 });
+    expect(totals).toEqual({ Common: 58, Rare: 36, Epic: 15, Legendary: 1 });
+    expect(
+      itemWeights(baseDrop).find(({ value }) => value === 'homing_missile')
+        ?.weight,
+    ).toBe(6);
+    expect(Object.keys(itemConfigs)).not.toContain('emp');
+    expect(
+      itemWeights({ ...baseDrop, spreadLevel: 5 }).find(
+        ({ value }) => value === 'spread_gun',
+      )?.weight,
+    ).toBe(0);
   });
 
   it('softly biases needs and removes capped cores', () => {

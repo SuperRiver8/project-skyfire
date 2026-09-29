@@ -111,28 +111,6 @@ export class ItemEffects {
     this.ring(GAME_WIDTH / 2, GAME_HEIGHT / 2, color, 670);
   }
 
-  empGlitch(): void {
-    for (let i = 0; i < 7; i += 1) {
-      const strip = this.scene.add
-        .rectangle(
-          GAME_WIDTH / 2,
-          95 + i * 120,
-          GAME_WIDTH,
-          3 + (i % 3) * 4,
-          i % 2 ? 0xe7ffff : 0x4f9dff,
-          0.5,
-        )
-        .setDepth(38);
-      this.scene.tweens.add({
-        targets: strip,
-        x: GAME_WIDTH / 2 + (i % 2 ? -34 : 34),
-        alpha: 0,
-        duration: 190 + i * 28,
-        onComplete: () => strip.destroy(),
-      });
-    }
-  }
-
   update(frozen: boolean): void {
     const filter = frozen ? 'saturate(0.55)' : '';
     if (this.scene.game.canvas.style.filter !== filter)

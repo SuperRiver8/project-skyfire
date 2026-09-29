@@ -32,6 +32,8 @@ export interface BossAttack {
   intervalMs: readonly [number, number, number];
   /** 解锁阶段（1-3） */
   unlockPhase: number;
+  /** 解锁后首次施放的等待时间；不设置时使用该阶段完整间隔 */
+  firstCastDelayMs?: number;
 }
 
 export interface BossConfig {
