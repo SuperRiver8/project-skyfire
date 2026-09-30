@@ -38,7 +38,13 @@ export class LightningWeapon extends BaseWeapon {
   fire(): void {
     this.audio.playSfx('lightning');
     const chainCount =
-      this.level >= 5 ? 8 : this.level >= 4 ? 5 : this.level >= 2 ? 3 : 1;
+      this.level >= weaponBalance.lightning.maxLevel
+        ? 8
+        : this.level >= 4
+          ? 5
+          : this.level >= 2
+            ? 3
+            : 1;
     const used = new Set<Enemy>();
     let x = this.aircraft.x,
       y = this.aircraft.y;

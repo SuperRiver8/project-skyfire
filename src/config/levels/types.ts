@@ -20,6 +20,8 @@ export interface LevelConfig {
   chapter: number;
   backgroundId: BackgroundId;
   durationMs: number;
+  /** 设计波次时的参考时长，运行时缩放到 durationMs */
+  waveTimelineMs?: number;
   waves: WaveConfig[];
   bossId?: string;
   bossHpMultiplier?: number;

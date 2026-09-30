@@ -78,6 +78,7 @@ export class GameScene extends Phaser.Scene {
   private aircraft!: PlayerAircraft;
   private gameOver = false;
   private waveManager!: WaveManager;
+  private bossWarningText?: Phaser.GameObjects.Text;
   private stats!: PlayerStats;
   private progress!: PlayerProgress;
   private pickups!: PickupPool;
@@ -114,6 +115,7 @@ export class GameScene extends Phaser.Scene {
 
   create(): void {
     this.boss = undefined;
+    this.bossWarningText = undefined;
     this.pausePanel = undefined;
     this.debugOverlay = undefined;
     this.stressMs = 0;
@@ -272,6 +274,7 @@ export class GameScene extends Phaser.Scene {
       (id, x, y, filler) => this.enemyController.spawn(id, x, y, filler),
       () => this.onWavesComplete(),
       this.difficulty,
+      () => this.showBossWarning(),
     );
 
     new GameSoundButton(this, 449, 42, settings.sfxVolume > 0, () => {
@@ -378,7 +381,7 @@ export class GameScene extends Phaser.Scene {
       deltaMs * this.itemManager.bulletSpeedFactor,
       deltaMs,
     );
-    this.boss?.update(deltaMs * this.itemManager.bossSpeedFactor);
+    this.boss?.update(deltaMs * this.itemManager.bossSpeedFactor, deltaMs);
     if (this.gameOver) return;
     if (this.stressMs > 0) {
       this.stressMs -= deltaMs;
@@ -494,27 +497,25 @@ export class GameScene extends Phaser.Scene {
   private onWavesComplete(): void {
     this.enemyController.enemies.clear();
     this.enemyBullets.clear();
+    this.bossWarningText?.destroy();
+    this.bossWarningText = undefined;
+    this.spawnBoss();
+  }
+
+  private showBossWarning(): void {
+    if (this.boss?.isActive() || this.bossWarningText) return;
     const level = getLevelConfig(this.levelId);
     const bossName = getBossConfig(level.bossId ?? 'mechanical_eagle').name;
-    const warning = this.add
-      .text(
-        GAME_WIDTH / 2,
-        360,
-        `第 ${this.levelId} 关 Boss\n${bossName}来袭`,
-        {
-          fontFamily: 'Arial',
-          fontSize: '38px',
-          color: '#ff7272',
-          align: 'center',
-        },
-      )
+    this.bossWarningText = this.add
+      .text(GAME_WIDTH / 2, 360, `第 ${this.levelId} 关首领\n${bossName}来袭`, {
+        fontFamily: 'Arial',
+        fontSize: '38px',
+        color: '#ff7272',
+        align: 'center',
+      })
       .setOrigin(0.5)
       .setDepth(60);
     this.audio.playSfx('boss_warning');
-    this.time.delayedCall(1100, () => {
-      warning.destroy();
-      this.spawnBoss();
-    });
   }
 
   private spawnBoss(): void {

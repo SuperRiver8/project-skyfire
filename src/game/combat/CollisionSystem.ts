@@ -78,8 +78,8 @@ export class CollisionSystem {
           bullet.displayHeight,
           boss.x,
           boss.y,
-          150,
-          90,
+          boss.hitboxWidth,
+          boss.hitboxHeight,
         ) &&
         bullet.registerHit(boss)
       ) {

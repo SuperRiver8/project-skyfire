@@ -1,3 +1,7 @@
+import {
+  capUpgradeLevel,
+  playerUpgradeConfig,
+} from '../../config/items/progression';
 import Phaser from 'phaser';
 import type { BossController } from '../bosses/BossController';
 import type { Enemy } from '../enemies/Enemy';
@@ -150,7 +154,7 @@ class HomingMissile extends Phaser.GameObjects.Image {
     for (let i = length; i > 0; i -= 1) {
       graphics.lineStyle(
         level >= 2 ? 3 : 2,
-        level >= 5 ? 0xffe19a : 0xff9b54,
+        level >= playerUpgradeConfig.maxLevel ? 0xffe19a : 0xff9b54,
         0.65 * (1 - i / (length + 1)),
       );
       graphics.lineBetween(
@@ -205,14 +209,24 @@ export class HomingMissileSystem {
   }
 
   addStack(): void {
-    if (this.level < 5) this.level += 1;
-    else this.overdrive = Math.min(3, this.overdrive + 1);
+    if (this.level < playerUpgradeConfig.maxLevel) this.level += 1;
+    else
+      this.overdrive = Math.min(
+        playerUpgradeConfig.missileOverdriveMax,
+        this.overdrive + 1,
+      );
     this.aircraft.setMissileLevel(this.level);
   }
 
   restore(level: number, overdrive: number): void {
-    this.level = Math.max(0, Math.min(5, level));
-    this.overdrive = Math.max(0, Math.min(3, overdrive));
+    this.level = capUpgradeLevel(level);
+    this.overdrive = Math.max(
+      0,
+      Math.min(
+        playerUpgradeConfig.missileOverdriveMax,
+        Math.round(overdrive) || 0,
+      ),
+    );
     this.aircraft.setMissileLevel(this.level);
   }
 
@@ -262,7 +276,9 @@ export class HomingMissileSystem {
 
   private launch(): void {
     const side = this.launchSerial++ % 2 === 0 ? -1 : 1;
-    const x = this.aircraft.x + side * (this.level >= 5 ? 34 : 26);
+    const x =
+      this.aircraft.x +
+      side * (this.level >= playerUpgradeConfig.maxLevel ? 34 : 26);
     const y = this.aircraft.y - 11;
     this.pool.acquire().activate(x, y, this.chooseTarget(x, y));
     this.onLaunch(this.level >= 4);
@@ -327,9 +343,13 @@ export class HomingMissileSystem {
         ? this.enemies.damageEnemyDetailed(target, damage).crit
         : this.enemies.damageBossDetailed(damage).crit;
     const radius =
-      BASE_RADIUS * (this.level >= 5 ? 1.2 : 1) * (crit ? 1.15 : 1);
+      BASE_RADIUS *
+      (this.level >= playerUpgradeConfig.maxLevel ? 1.2 : 1) *
+      (crit ? 1.15 : 1);
     this.enemies.spawnExplosion(x, y, (radius / BASE_RADIUS) * 0.8, crit);
-    const splash = damage * (this.stats.attackCores >= 5 ? 1.15 : 1);
+    const splash =
+      damage *
+      (this.stats.attackCores >= playerUpgradeConfig.maxLevel ? 1.15 : 1);
     for (const enemy of this.enemies.enemies.activeEnemies()) {
       if (enemy === target) continue;
       const distance = Math.hypot(enemy.x - x, enemy.y - y);

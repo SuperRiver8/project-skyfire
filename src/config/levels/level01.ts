@@ -1,3 +1,4 @@
+import { levelProgressConfig } from './progression';
 import type { LevelConfig } from './types';
 
 export const level01: LevelConfig = {
@@ -5,7 +6,8 @@ export const level01: LevelConfig = {
   name: '初次升空',
   chapter: 1,
   backgroundId: 'starfield',
-  durationMs: 75_000,
+  durationMs: levelProgressConfig.levels[1].bossAtMs,
+  waveTimelineMs: levelProgressConfig.levels[1].waveTimelineMs,
   waves: [
     {
       startAtMs: 0,

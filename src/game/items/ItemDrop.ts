@@ -1,3 +1,4 @@
+import { playerUpgradeConfig } from '../../config/items/progression';
 import { itemConfigs, type ItemId } from '../../config/items/items';
 import { Random } from '../utils/Random';
 
@@ -25,16 +26,43 @@ export function itemWeights(
     if (state.elite && config.rarity === 'Epic') weight *= 1.8;
     if (state.elite && config.rarity === 'Legendary') weight *= 2.5;
     if (state.recent.includes(value)) weight *= 0.35;
-    if (value === 'attack_core' && state.attackCores >= 5) weight = 0;
-    if (value === 'fire_rate_core' && state.rapidCores >= 5) weight = 0;
-    if (value === 'critical_core' && state.critCores >= 5) weight = 0;
-    if (value === 'spread_gun' && state.spreadLevel >= 5) weight = 0;
-    if (value === 'electric_arc' && state.electricStacks >= 5) weight = 0;
-    if (value === 'homing_missile' && state.missileLevel >= 5)
-      weight *= state.missileOverdrive >= 3 ? 0 : 0.3;
+    if (
+      value === 'attack_core' &&
+      state.attackCores >= playerUpgradeConfig.maxLevel
+    )
+      weight = 0;
+    if (
+      value === 'fire_rate_core' &&
+      state.rapidCores >= playerUpgradeConfig.maxLevel
+    )
+      weight = 0;
+    if (
+      value === 'critical_core' &&
+      state.critCores >= playerUpgradeConfig.maxLevel
+    )
+      weight = 0;
+    if (
+      value === 'spread_gun' &&
+      state.spreadLevel >= playerUpgradeConfig.maxLevel
+    )
+      weight = 0;
+    if (
+      value === 'electric_arc' &&
+      state.electricStacks >= playerUpgradeConfig.maxLevel
+    )
+      weight = 0;
+    if (
+      value === 'homing_missile' &&
+      state.missileLevel >= playerUpgradeConfig.maxLevel
+    )
+      weight *=
+        state.missileOverdrive >= playerUpgradeConfig.missileOverdriveMax
+          ? 0
+          : 0.3;
     if (value === 'phoenix_core' && state.phoenixReady) weight *= 0.12;
     if (value === 'heal' && state.hpRatio < 0.3) weight *= 2.2;
-    if (value === 'shield' && state.shields >= 4) weight *= 0.35;
+    if (value === 'shield' && state.shields >= playerUpgradeConfig.maxLevel)
+      weight *= 0.35;
     return { value, weight };
   });
 }

@@ -1,3 +1,4 @@
+import { levelProgressConfig } from './progression';
 import type { LevelConfig } from './types';
 
 export const level04: LevelConfig = {
@@ -5,7 +6,8 @@ export const level04: LevelConfig = {
   name: '最后防线',
   chapter: 1,
   backgroundId: 'storm_fortress',
-  durationMs: 110_000,
+  durationMs: levelProgressConfig.levels[4].bossAtMs,
+  waveTimelineMs: levelProgressConfig.levels[4].waveTimelineMs,
   waves: [
     {
       startAtMs: 0,

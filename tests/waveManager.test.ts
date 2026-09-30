@@ -13,6 +13,30 @@ import {
 import { getLevelDifficulty } from '../src/config/balance/levelDifficulty';
 
 describe('WaveManager', () => {
+  it('warns at 58.9 seconds and starts each boss exactly at the configured 60 seconds', () => {
+    for (let id = 1; id <= 5; id += 1) {
+      const level = getLevelConfig(id);
+      const events: number[] = [];
+      const manager = new WaveManager(
+        level,
+        () => {},
+        () => events.push(manager.elapsedMs),
+        getLevelDifficulty(id),
+        () => events.push(manager.elapsedMs),
+      );
+      expect(level.durationMs).toBe(60_000);
+      for (let time = 0; time < 58_800; time += 100) manager.update(100, 1);
+      expect(events).toEqual([]);
+      manager.update(100, 1);
+      expect(events).toEqual([58_900]);
+      for (let time = 58_900; time < 59_900; time += 100)
+        manager.update(100, 1);
+      expect(events).toEqual([58_900]);
+      manager.update(100, 1);
+      manager.update(100, 1);
+      expect(events).toEqual([58_900, 60_000]);
+    }
+  });
   it('adds density without delaying bosses or mutating the base waves', () => {
     const totals = [90, 135, 160, 215, 96];
     for (let levelId = 1; levelId <= 5; levelId += 1) {
@@ -42,7 +66,7 @@ describe('WaveManager', () => {
       () => {},
     ).groups[0].config;
     expect(firstGroup.count).toBe(24);
-    expect(firstGroup.intervalMs).toBe(267);
+    expect(firstGroup.intervalMs).toBe(178);
     const tankGroup = new WaveManager(
       getLevelConfig(4),
       () => {},
@@ -57,7 +81,10 @@ describe('WaveManager', () => {
         ...getLevelConfig(levelId),
         waves: [
           {
-            startAtMs: 1500,
+            startAtMs:
+              1500 /
+              (getLevelConfig(levelId).durationMs /
+                getLevelConfig(levelId).waveTimelineMs!),
             groups: [
               {
                 enemyId: 'scout',

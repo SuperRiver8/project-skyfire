@@ -1,3 +1,4 @@
+import { capUpgradeLevel } from '../../config/items/progression';
 import { playerBalance } from '../../config/balance/playerBalance';
 import { integer } from '../utils/Integer';
 
@@ -17,7 +18,7 @@ export class PlayerHealth {
     return this.currentShields;
   }
   set shields(value: number) {
-    this.currentShields = Math.min(5, integer(value));
+    this.currentShields = capUpgradeLevel(value);
   }
 
   update(deltaMs: number): void {
@@ -41,7 +42,7 @@ export class PlayerHealth {
     return value - restored;
   }
   addShield(): void {
-    this.shields = Math.min(5, this.shields + 1);
+    this.shields = capUpgradeLevel(this.shields + 1);
   }
   revive(): void {
     this.hp = playerBalance.maxHp / 2;

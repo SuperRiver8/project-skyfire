@@ -23,6 +23,7 @@ import {
 } from '../../config/balance/levelDifficulty';
 import { bossSkills, type BossEffect, type SkillContext } from './BossSkills';
 import { integer } from '../utils/Integer';
+import { PeriodicShield } from './PeriodicShield';
 
 export type BossState =
   | 'ENTER'
@@ -59,6 +60,7 @@ export class BossController {
   private readonly skillTimers = new Map<string, number>();
   private readonly effects: BossEffect[] = [];
   private shieldMs = 0;
+  private readonly protectionShield?: PeriodicShield;
   private readonly shieldVisual: Phaser.GameObjects.Ellipse;
   private readonly hpBackground: Phaser.GameObjects.Rectangle;
   private readonly hpFill: Phaser.GameObjects.Rectangle;
@@ -82,6 +84,9 @@ export class BossController {
       difficulty,
     );
     this.hp = this.config.maxHp;
+    if (this.config.protectionShield) {
+      this.protectionShield = new PeriodicShield(this.config.protectionShield);
+    }
     ensureBossArt(scene);
     const key = `boss_${this.config.id}`;
     const vis = this.config.visual;
@@ -144,6 +149,16 @@ export class BossController {
       .ellipse(0, 34, 170, 96, 0x66ccff, 0)
       .setStrokeStyle(3, 0x8fdcff, 0.75)
       .setVisible(false);
+    if (this.protectionShield) {
+      this.shieldVisual
+        .setPosition(0, 0)
+        .setScale(
+          (this.sprite.width + 32) / 170,
+          (this.sprite.height + 28) / 96,
+        )
+        .setStrokeStyle(4, 0xffe397, 1)
+        .setFillStyle(0x58bbff, 0.12);
+    }
     this.visual.add([
       ...this.engines,
       ...this.engineCores,
@@ -181,6 +196,15 @@ export class BossController {
   get y(): number {
     return this.visual.y;
   }
+  get hitboxWidth(): number {
+    return 150 * this.difficulty.bossScale;
+  }
+  get hitboxHeight(): number {
+    return 90 * this.difficulty.bossScale;
+  }
+  get protectionActive(): boolean {
+    return this.isDamageable() && (this.protectionShield?.active ?? false);
+  }
   isActive(): boolean {
     return this.state !== 'DYING' && this.state !== 'DEAD';
   }
@@ -195,7 +219,7 @@ export class BossController {
   }
 
   damage(amount: number): number {
-    if (!this.isDamageable()) return 0;
+    if (!this.isDamageable() || this.protectionActive) return 0;
     // 护盾矩阵开启时大幅减伤
     if (this.shieldMs > 0) amount *= 0.25;
     const applied = Math.min(this.hp, integer(amount));
@@ -223,7 +247,7 @@ export class BossController {
     return applied;
   }
 
-  update(deltaMs: number): void {
+  update(deltaMs: number, realDeltaMs = deltaMs): void {
     this.stateMs += deltaMs;
     this.hitFlashMs = Math.max(0, this.hitFlashMs - deltaMs);
     if (this.state === 'ENTER') {
@@ -236,6 +260,7 @@ export class BossController {
         this.hpBackground.setVisible(true);
         this.hpFill.setVisible(true);
         this.title.setVisible(true);
+        this.updateShieldVisual();
       }
       return;
     }
@@ -251,6 +276,10 @@ export class BossController {
       return;
     }
     if (this.state === 'DEAD') return;
+    // 防护罩按实际战斗时间计时，不被时间冻结拉长；暂停时场景停止调用 update。
+    this.protectionShield?.update(realDeltaMs);
+    this.shieldMs = Math.max(0, this.shieldMs - deltaMs);
+    this.updateShieldVisual();
     if (this.state === 'PHASE_TRANSITION') {
       this.updateVisuals(deltaMs, 0, 1 + 0.1 * Math.sin(this.stateMs / 50));
       if (this.stateMs >= this.config.transitionMs) {
@@ -260,7 +289,13 @@ export class BossController {
       return;
     }
     const previousX = this.visual.x;
-    const baseX = GAME_WIDTH / 2 + Math.sin(this.stateMs / 700) * 145;
+    // 放大后收紧横移范围，连同阶段切换的膨胀动画留在屏幕内。
+    const halfWidth = Math.min(
+      GAME_WIDTH / 2,
+      (this.sprite.width / 2 + 20) * this.config.displayScale * 1.1 + 8,
+    );
+    const movement = Math.min(145, GAME_WIDTH / 2 - halfWidth);
+    const baseX = GAME_WIDTH / 2 + Math.sin(this.stateMs / 700) * movement;
     if (this.dashVisualMs > 0) {
       this.dashVisualMs = Math.max(0, this.dashVisualMs - deltaMs);
       const progress =
@@ -271,6 +306,11 @@ export class BossController {
           Math.sin(progress * Math.PI) *
           0.7;
     } else this.visual.x = baseX;
+    this.visual.x = Phaser.Math.Clamp(
+      this.visual.x,
+      halfWidth,
+      GAME_WIDTH - halfWidth,
+    );
     this.updateVisuals(
       deltaMs,
       deltaMs > 0 ? ((this.visual.x - previousX) * 1000) / deltaMs : 0,
@@ -296,11 +336,17 @@ export class BossController {
     } else this.trailMs = 0;
     this.updateAttacks(deltaMs);
     this.updateEffects(deltaMs);
-    if (this.shieldMs > 0) {
-      this.shieldMs -= deltaMs;
-      this.shieldVisual.setAlpha(0.28 + Math.sin(this.stateMs / 70) * 0.1);
-      if (this.shieldMs <= 0) this.shieldVisual.setVisible(false);
-    }
+    this.updateShieldVisual();
+  }
+
+  private updateShieldVisual(): void {
+    this.shieldVisual
+      .setVisible(this.protectionActive || this.shieldMs > 0)
+      .setAlpha(
+        this.protectionActive
+          ? 0.75 + Math.sin(this.stateMs / 90) * 0.15
+          : 0.28 + Math.sin(this.stateMs / 70) * 0.1,
+      );
   }
 
   private updateVisuals(
@@ -319,7 +365,7 @@ export class BossController {
     this.shadow
       .setPosition(this.x + pose.shadowX, this.y + 17)
       .setAlpha(pose.shadowAlpha)
-      .setScale(scale);
+      .setScale(scale * this.difficulty.bossScale);
     const vis = this.config.visual;
     const enginePulse = Math.sin(this.stateMs / 60) * 0.07;
     for (const [index, engine] of this.engines.entries()) {
@@ -447,6 +493,7 @@ export class BossController {
 
   private beginDeath(): void {
     this.state = 'DYING';
+    this.shieldVisual.setVisible(false);
     this.stateMs = 0;
     for (const effect of this.effects) effect.destroy();
     this.effects.length = 0;

@@ -34,7 +34,7 @@ describe('level difficulty', () => {
     const original = structuredClone(chargerConfig);
     const scaled = scaleEnemyConfig(chargerConfig, getLevelDifficulty(5));
     expect(scaled).toMatchObject({
-      maxHp: 210,
+      maxHp: 350,
       speed: 144,
       chargeSpeed: 720,
       chargeDelayMs: 650,
@@ -63,7 +63,9 @@ describe('level difficulty', () => {
       factory.getConfig('heavy_tank'),
     );
     expect(
-      configs.every(({ maxHp, exp }) => maxHp === 780 && Number.isInteger(exp)),
+      configs.every(
+        ({ maxHp, exp }) => maxHp === 1300 && Number.isInteger(exp),
+      ),
     ).toBe(true);
     expect(configs.reduce((total, config) => total + config.exp, 0)).toBe(
       10 * heavyTankConfig.exp,
@@ -112,6 +114,9 @@ describe('level difficulty', () => {
         getLevelDifficulty(levelId),
       );
       expect(scaled.maxHp).toBe(expectedHp[levelId - 1]);
+      expect(scaled.displayScale).toBeCloseTo(
+        base.displayScale * (1 + (levelId - 1) * 0.12),
+      );
       expect(
         phaseForHp(scaled.maxHp * base.phase2Threshold, scaled.maxHp, base.id),
       ).toBe(2);

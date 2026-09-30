@@ -1,3 +1,4 @@
+import { playerUpgradeConfig } from '../../config/items/progression';
 import type Phaser from 'phaser';
 import {
   itemConfigs,
@@ -72,7 +73,7 @@ export class ItemManager {
     const count = this.difficulty.itemDropCount;
     const laneWidth = (GAME_WIDTH - DROP_MARGIN * 2) / count;
     const inset = count > 1 ? DROP_SPACING / 2 : 0;
-    // 每个道具独立抽取，分区掉落留出间距，避免双份道具完全重叠。
+    // 各关每次掉落一个道具，抽取和掉落频率分别处理。
     for (let index = 0; index < count; index += 1) {
       const x =
         DROP_MARGIN +
@@ -114,7 +115,7 @@ export class ItemManager {
             DROP_MARGIN + halfSpread,
             Math.min(GAME_WIDTH - DROP_MARGIN - halfSpread, x),
           );
-    // 精英掉落成功时也给双份；保留原概率，贴边时整组移回画面内。
+    // 精英掉落成功时也只给一个，保留原有成功概率。
     for (let index = 0; index < count; index += 1)
       this.spawnDrop(centerX + index * DROP_SPACING - halfSpread, y, true);
   }
@@ -177,53 +178,62 @@ export class ItemManager {
     let maxed = false;
     switch (id) {
       case 'attack_core':
-        this.stats.attackCores = Math.min(5, this.stats.attackCores + 1);
-        maxed = this.stats.attackCores === 5;
-        message = `攻击核心 ${maxed ? 'MAX' : `Lv.${this.stats.attackCores}`}  伤害 +12%`;
+        this.stats.attackCores = Math.min(
+          playerUpgradeConfig.maxLevel,
+          this.stats.attackCores + 1,
+        );
+        maxed = this.stats.attackCores === playerUpgradeConfig.maxLevel;
+        message = `攻击核心 ${maxed ? '满级' : `${this.stats.attackCores} 级`}  伤害 +12%`;
         if (this.stats.firepowerOverload) message += '  火力过载';
         break;
       case 'fire_rate_core':
-        this.stats.rapidCores = Math.min(5, this.stats.rapidCores + 1);
-        maxed = this.stats.rapidCores === 5;
-        message = `急速核心 ${maxed ? 'MAX' : `Lv.${this.stats.rapidCores}`}  射速 +10%`;
+        this.stats.rapidCores = Math.min(
+          playerUpgradeConfig.maxLevel,
+          this.stats.rapidCores + 1,
+        );
+        maxed = this.stats.rapidCores === playerUpgradeConfig.maxLevel;
+        message = `急速核心 ${maxed ? '满级' : `${this.stats.rapidCores} 级`}  射速 +10%`;
         if (this.stats.firepowerOverload) message += '  火力过载';
         break;
       case 'critical_core':
-        this.stats.critCores = Math.min(5, this.stats.critCores + 1);
-        maxed = this.stats.critCores === 5;
-        message = `暴击核心 ${maxed ? 'MAX' : `Lv.${this.stats.critCores}`}  暴击 +5%`;
+        this.stats.critCores = Math.min(
+          playerUpgradeConfig.maxLevel,
+          this.stats.critCores + 1,
+        );
+        maxed = this.stats.critCores === playerUpgradeConfig.maxLevel;
+        message = `暴击核心 ${maxed ? '满级' : `${this.stats.critCores} 级`}  暴击 +5%`;
         if (this.stats.destructionCore) message += '  毁灭核心';
         break;
       case 'shield':
-        if (this.health.shields >= 5) {
+        if (this.health.shields >= playerUpgradeConfig.maxLevel) {
           this.shieldOverload();
           message = '护盾过载  冲击波';
           maxed = true;
         } else {
           this.health.addShield();
-          message = `能量护盾 Lv.${this.health.shields}`;
-          maxed = this.health.shields === 5;
+          message = `能量护盾 ${this.health.shields} 层`;
+          maxed = this.health.shields === playerUpgradeConfig.maxLevel;
         }
         break;
       case 'electric_arc':
         this.electricArc.addStack();
-        maxed = this.electricArc.stacks === 5;
-        message = `电击能量 ${maxed ? 'MAX' : `Lv.${this.electricArc.stacks}`}`;
+        maxed = this.electricArc.stacks === playerUpgradeConfig.maxLevel;
+        message = `电击能量 ${maxed ? '满级' : `${this.electricArc.stacks} 级`}`;
         break;
       case 'spread_gun': {
         this.weapons.upgradeWeapon('spread_gun');
         const level = this.weapons.levels.spread_gun;
-        maxed = level === 5;
-        message = `散射枪 ${maxed ? 'MAX' : `Lv.${level}`}`;
+        maxed = level === playerUpgradeConfig.maxLevel;
+        message = `散射枪 ${maxed ? '满级' : `${level} 级`}`;
         break;
       }
       case 'homing_missile':
         this.homingMissiles.addStack();
-        maxed = this.homingMissiles.level === 5;
+        maxed = this.homingMissiles.level === playerUpgradeConfig.maxLevel;
         message =
           this.homingMissiles.overdrive > 0
-            ? `追踪导弹系统 MAX  伤害 +${this.homingMissiles.overdrive * 10}%`
-            : `追踪导弹系统 ${maxed ? 'MAX · 导弹风暴' : `Lv.${this.homingMissiles.level}`}  ${this.homingMissiles.level * 2} 枚/秒`;
+            ? `追踪导弹系统 满级  伤害 +${this.homingMissiles.overdrive * 10}%`
+            : `追踪导弹系统 ${maxed ? '满级 · 导弹风暴' : `${this.homingMissiles.level} 级`}  ${this.homingMissiles.level * 2} 枚/秒`;
         this.effects.ring(
           this.aircraft.x,
           this.aircraft.y,
@@ -232,21 +242,27 @@ export class ItemManager {
         );
         break;
       case 'heal':
-        if (this.health.hp >= playerBalance.maxHp && this.health.shields >= 5) {
+        if (
+          this.health.hp >= playerBalance.maxHp &&
+          this.health.shields >= playerUpgradeConfig.maxLevel
+        ) {
           this.emergencyOvercharge();
-          message = 'EMERGENCY OVERCHARGE';
+          message = '紧急过载';
           maxed = true;
         } else {
           this.repairOverflow += this.health.heal(30);
-          while (this.repairOverflow >= 30 && this.health.shields < 5) {
+          while (
+            this.repairOverflow >= 30 &&
+            this.health.shields < playerUpgradeConfig.maxLevel
+          ) {
             this.repairOverflow -= 30;
             this.health.addShield();
           }
           this.repairOverflow = Math.min(this.repairOverflow, 29);
           message =
             this.health.shields > 0 && this.health.hp === playerBalance.maxHp
-              ? `维修装置  HP 满 / 护盾 Lv.${this.health.shields}`
-              : '维修装置  HP +30';
+              ? `维修装置  生命已满 / 护盾 ${this.health.shields} 层`
+              : '维修装置  生命 +30';
         }
         break;
       case 'magnet':
@@ -259,8 +275,8 @@ export class ItemManager {
         this.stats.activateBerserk();
         this.effects.ring(this.aircraft.x, this.aircraft.y, 0xff7040, 120);
         message =
-          this.stats.rapidCores >= 5
-            ? 'REDLINE  狂暴射速强化'
+          this.stats.rapidCores >= playerUpgradeConfig.maxLevel
+            ? '极限狂暴  射速强化'
             : '狂暴模式  10 秒过载';
         break;
       case 'time_freeze':
@@ -272,7 +288,7 @@ export class ItemManager {
         if (this.phoenixReady) {
           this.health.heal(40);
           this.health.addShield();
-          message = '凤凰核心  HP +40 / 护盾 +1';
+          message = '凤凰核心  生命 +40 / 护盾 +1';
         } else {
           this.phoenixReady = true;
           message = '凤凰核心  重生已就绪';
@@ -316,7 +332,7 @@ export class ItemManager {
         this.enemies.damageEnemy(enemy, 140, false);
     this.effects.screenPulse(0xffaa63, 0.5);
     this.effects.ring(this.aircraft.x, this.aircraft.y, 0xffcb78, 240);
-    this.onItem('凤凰重生  HP 50% / 无敌 2 秒', true);
+    this.onItem('凤凰重生  生命恢复至 50% / 无敌 2 秒', true);
     return true;
   }
 

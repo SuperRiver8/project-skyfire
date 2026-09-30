@@ -1,3 +1,4 @@
+import { playerUpgradeConfig } from '../../config/items/progression';
 import Phaser from 'phaser';
 import { playerBalance } from '../../config/balance/playerBalance';
 import { ensurePlayerArt } from '../aircraft/AircraftArt';
@@ -144,7 +145,9 @@ export class PlayerAircraft extends Phaser.GameObjects.Container {
     this.phoenixHalo.setScale(1 + pulse * 0.08);
     if (this.missileLevel > 0)
       this.missilePods.setAlpha(
-        0.88 + pulse * (this.missileLevel >= 5 ? 0.12 : 0.05),
+        0.88 +
+          pulse *
+            (this.missileLevel >= playerUpgradeConfig.maxLevel ? 0.12 : 0.05),
       );
     if (this.berserkMs > 0 && Math.hypot(speed, verticalSpeed) > 195) {
       this.trailMs += deltaMs;
@@ -176,16 +179,22 @@ export class PlayerAircraft extends Phaser.GameObjects.Container {
     const graphics = this.missilePods;
     graphics.clear();
     if (level === 0) return;
-    // 每级都在机翼上增加可见结构，Lv5 扩展为完整导弹舱。
+    // 每级增加可见结构，达到配置上限时扩展为完整导弹舱。
     for (const side of [-1, 1]) {
-      const x = side * (level >= 5 ? 32 : 26);
-      const width = level >= 5 ? 15 : 9;
-      const height = level >= 5 ? 31 : 20;
-      graphics.fillStyle(level >= 5 ? 0xf2b55d : 0x7ca8c3, 0.95);
+      const x = side * (level >= playerUpgradeConfig.maxLevel ? 32 : 26);
+      const width = level >= playerUpgradeConfig.maxLevel ? 15 : 9;
+      const height = level >= playerUpgradeConfig.maxLevel ? 31 : 20;
+      graphics.fillStyle(
+        level >= playerUpgradeConfig.maxLevel ? 0xf2b55d : 0x7ca8c3,
+        0.95,
+      );
       graphics.fillRoundedRect(x - width / 2, -12, width, height, 3);
       graphics.fillStyle(0x21364e, 1);
       graphics.fillRect(x - width / 2 + 2, -9, width - 4, height - 7);
-      graphics.fillStyle(level >= 5 ? 0xffdd8d : 0xffaa61, 1);
+      graphics.fillStyle(
+        level >= playerUpgradeConfig.maxLevel ? 0xffdd8d : 0xffaa61,
+        1,
+      );
       graphics.fillTriangle(x, -17, x - 4, -7, x + 4, -7);
       if (level >= 2) {
         graphics.fillStyle(0xff8c3f, 0.85);
@@ -210,7 +219,7 @@ export class PlayerAircraft extends Phaser.GameObjects.Container {
         graphics.lineBetween(x - 4, 1, x + 4, 1);
         graphics.lineBetween(side * 42 - 3, 4, side * 42 + 3, 4);
       }
-      if (level >= 5) {
+      if (level >= playerUpgradeConfig.maxLevel) {
         graphics.lineStyle(2, 0xffe2a3, 0.9);
         graphics.strokeRoundedRect(
           x - width / 2 - 2,

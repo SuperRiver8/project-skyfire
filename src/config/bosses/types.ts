@@ -49,5 +49,7 @@ export interface BossConfig {
   attacks: BossAttack[];
   /** 机体整体显示倍率（营造巨物压迫感） */
   displayScale: number;
+  /** 周期性全额挡伤，持续时间包含在刷新周期内 */
+  protectionShield?: { durationMs: number; refreshMs: number };
   visual: BossVisualConfig;
 }

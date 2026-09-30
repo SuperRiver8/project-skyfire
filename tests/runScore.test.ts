@@ -42,6 +42,9 @@ describe('campaign scoring', () => {
     expect(isBetterRun({ ...record, elapsedTimeMs: 59000 }, record)).toBe(true);
     expect(isBetterRun({ ...record, damageTaken: 10 }, record)).toBe(true);
     expect(isBetterRun({ ...record, ranked: false })).toBe(false);
+    expect(
+      isBetterRun(record, { ...record, rulesVersion: 1, score: 999999 }),
+    ).toBe(true);
     expect(new RunScore(3).snapshot().ranked).toBe(false);
     score.markPractice();
     expect(score.snapshot().ranked).toBe(false);

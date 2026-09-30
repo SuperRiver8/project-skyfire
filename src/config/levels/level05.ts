@@ -1,3 +1,4 @@
+import { levelProgressConfig } from './progression';
 import type { LevelConfig } from './types';
 
 export const level05: LevelConfig = {
@@ -5,7 +6,8 @@ export const level05: LevelConfig = {
   name: '天空帝皇',
   chapter: 1,
   backgroundId: 'imperial_sky',
-  durationMs: 28_000,
+  durationMs: levelProgressConfig.levels[5].bossAtMs,
+  waveTimelineMs: levelProgressConfig.levels[5].waveTimelineMs,
   waves: [
     {
       startAtMs: 0,

@@ -39,8 +39,8 @@ export class MachineGunWeapon extends BaseWeapon {
     const damage =
       machineGunConfig.damage *
       this.stats.attackMultiplier *
-      (this.level >= 5 ? 1.2 : 1);
-    const pierce = this.level >= 5 ? 1 : 0;
+      (this.level >= machineGunConfig.maxLevel ? 1.2 : 1);
+    const pierce = this.level >= machineGunConfig.maxLevel ? 1 : 0;
     if (this.level === 1) {
       this.bullets.fire(x, y, -machineGunConfig.bulletSpeed, damage, 0, pierce);
     } else {

@@ -44,7 +44,7 @@ describe('electric arc targeting', () => {
     arc.update(220, 270, 800, 1);
     expect(lineBetween).not.toHaveBeenCalled();
     for (let i = 0; i < 5; i += 1) arc.addStack();
-    arc.update(220, 270, 800, 1);
+    arc.update(220, 270, 760, 1);
     expect(damageBoss).toHaveBeenCalledTimes(1);
     arc.destroy();
   });

@@ -1,3 +1,4 @@
+import { playerUpgradeConfig } from '../items/progression';
 export const machineGunConfig = {
   id: 'machine_gun',
   damage: 10,
@@ -7,5 +8,5 @@ export const machineGunConfig = {
   doubleBarrelOffsetX: 9,
   bulletPoolSize: 32,
   maxUpdateDeltaMs: 50,
-  maxLevel: 5,
+  maxLevel: playerUpgradeConfig.maxLevel,
 } as const;

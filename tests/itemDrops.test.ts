@@ -80,29 +80,26 @@ afterEach(() => {
 });
 
 describe('difficulty item drops', () => {
-  it('drops single items through level four and doubles only in level five at difficulty-scaled intervals', () => {
+  it('drops one item in every level at difficulty-scaled intervals', () => {
     vi.spyOn(Random, 'float').mockReturnValue(0);
     const firstDrops = [4000, 2000, 1333, 1000, 800];
     const intervals = [5000, 2500, 1667, 1250, 1000];
     for (let levelId = 1; levelId <= 5; levelId += 1) {
       drops.length = 0;
       const manager = itemManager(levelId);
-      const count = levelId === 5 ? 2 : 1;
       manager.update(firstDrops[levelId - 1] - 1, 270, 800);
       expect(drops).toHaveLength(0);
       manager.update(1, 270, 800);
-      expect(drops).toHaveLength(count);
+      expect(drops).toHaveLength(1);
       manager.update(intervals[levelId - 1] - 1, 270, 800);
-      expect(drops).toHaveLength(count);
+      expect(drops).toHaveLength(1);
       manager.update(1, 270, 800);
-      expect(drops).toHaveLength(count * 2);
-      if (count === 2)
-        expect(drops[1].x - drops[0].x).toBeGreaterThanOrEqual(64);
+      expect(drops).toHaveLength(2);
       manager.destroy();
     }
   });
 
-  it('scales the random upper interval and rolls both items independently', () => {
+  it('keeps level five random intervals and recent-drop weighting for single drops', () => {
     vi.spyOn(Random, 'float').mockReturnValue(1);
     const roll = vi
       .spyOn(Random, 'weighted')
@@ -110,6 +107,11 @@ describe('difficulty item drops', () => {
       .mockReturnValueOnce('magnet');
     const manager = itemManager(5);
     manager.update(800, 270, 800);
+    expect(drops.map(({ id }) => id)).toEqual(['heal']);
+    expect(roll).toHaveBeenCalledTimes(1);
+    manager.update(1599, 270, 800);
+    expect(drops).toHaveLength(1);
+    manager.update(1, 270, 800);
     expect(drops.map(({ id }) => id)).toEqual(['heal', 'magnet']);
     expect(roll).toHaveBeenCalledTimes(2);
     const secondWeights = roll.mock.calls[1][0] as {
@@ -119,31 +121,21 @@ describe('difficulty item drops', () => {
     expect(
       secondWeights.find(({ value }) => value === 'heal')!.weight,
     ).toBeCloseTo(19 * 0.35);
-    manager.update(1599, 270, 800);
-    expect(drops).toHaveLength(2);
-    manager.update(1, 270, 800);
-    expect(drops).toHaveLength(4);
     manager.destroy();
   });
 
-  it('doubles successful elite drops within screen bounds and keeps their probability', () => {
+  it('drops one item for successful elite kills in every level and keeps their probability', () => {
     const random = vi.spyOn(Random, 'float').mockReturnValue(0.64);
-    const manager = itemManager(5);
-    manager.rollEliteDrop(0, 200);
-    expect(drops.map(({ x, y }) => [x, y])).toEqual([
-      [40, 200],
-      [104, 200],
-    ]);
-    random.mockReturnValue(0.65);
-    manager.rollEliteDrop(270, 200);
-    expect(drops).toHaveLength(2);
-    random.mockReturnValue(0);
-    for (let levelId = 1; levelId <= 4; levelId += 1) {
-      const earlyLevel = itemManager(levelId);
-      earlyLevel.rollEliteDrop(270, 200);
-      expect(drops).toHaveLength(2 + levelId);
-      earlyLevel.destroy();
+    for (let levelId = 1; levelId <= 5; levelId += 1) {
+      drops.length = 0;
+      random.mockReturnValue(0.64);
+      const manager = itemManager(levelId);
+      manager.rollEliteDrop(270, 200);
+      expect(drops.map(({ x, y }) => [x, y])).toEqual([[270, 200]]);
+      random.mockReturnValue(0.65);
+      manager.rollEliteDrop(270, 200);
+      expect(drops).toHaveLength(1);
+      manager.destroy();
     }
-    manager.destroy();
   });
 });

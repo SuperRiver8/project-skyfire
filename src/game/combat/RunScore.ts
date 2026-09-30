@@ -1,7 +1,8 @@
 import { integer } from '../utils/Integer';
 
 // 调整计分或难度后必须升级规则版本，排行榜只比较同一版本。
-export const SCORE_RULES_VERSION = 1;
+// 第 3 版调整等级上限、敌机生命、Boss 体型/护罩及关卡时长。
+export const SCORE_RULES_VERSION = 3;
 export interface ScoreState {
   rulesVersion: number;
   startLevel: number;

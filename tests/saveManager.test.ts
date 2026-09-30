@@ -40,6 +40,10 @@ describe('SaveManager', () => {
     manager.save(save);
     expect(manager.load().bestRun).toEqual(save.bestRun);
     expect(
+      manager.migrate({ bestRun: { ...save.bestRun, rulesVersion: 1 } }).bestRun
+        ?.rulesVersion,
+    ).toBe(1);
+    expect(
       manager.migrate({ bestRun: { ...save.bestRun, rulesVersion: 0 } })
         .bestRun,
     ).toBeUndefined();

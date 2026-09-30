@@ -65,7 +65,9 @@ export class SaveManager {
     if (!value || typeof value !== 'object') return undefined;
     const record = value as Partial<RunRecord>;
     if (
-      record.rulesVersion !== SCORE_RULES_VERSION ||
+      !Number.isInteger(record.rulesVersion) ||
+      Number(record.rulesVersion) < 1 ||
+      Number(record.rulesVersion) > SCORE_RULES_VERSION ||
       !Array.isArray(record.completedLevels)
     )
       return undefined;
@@ -77,7 +79,7 @@ export class SaveManager {
     const bossPoints = integer(Number(record.bossPoints));
     const clearPoints = integer(Number(record.clearPoints));
     return {
-      rulesVersion: SCORE_RULES_VERSION,
+      rulesVersion: Number(record.rulesVersion),
       startLevel,
       ranked: record.ranked === true && startLevel === 1,
       enemyPoints,

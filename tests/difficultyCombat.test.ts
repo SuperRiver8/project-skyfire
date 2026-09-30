@@ -172,9 +172,9 @@ describe('difficulty combat integration', () => {
     controller.spawn('shooter', 100, 100);
     const enemy = [...controller.enemies.activeEnemies()][0];
     expect(controller.damageEnemyDetailed(enemy, 20.8, false).applied).toBe(21);
-    expect(enemy.currentHp).toBe(144);
+    expect(enemy.currentHp).toBe(254);
     expect(controller.damageEnemyDetailed(enemy, 10000, false).applied).toBe(
-      144,
+      254,
     );
     expect(score).toHaveBeenLastCalledWith(180);
     controller.spawn('shooter', 100, 100, true);
@@ -225,18 +225,20 @@ describe('difficulty combat integration', () => {
     expect(controller.damageBossDetailed(10, false).applied).toBe(0);
   });
   it('moves tougher enemies faster and resets their health when a pool slot is reused', () => {
-    const { scene } = combatScene();
+    const { scene, rectangles } = combatScene();
     const pool = new EnemyPool(scene, getLevelDifficulty(5));
     const enemy = pool.spawn('shooter', 270, 100);
-    expect(enemy.maxHp).toBe(165);
+    expect(enemy.maxHp).toBe(275);
+    expect(rectangles).toHaveLength(0);
     pool.update(100, 270, 800);
     expect(enemy.y).toBeCloseTo(117.6);
     enemy.takeDamage(20);
-    expect(enemy.currentHp).toBe(145);
+    expect(enemy.currentHp).toBe(255);
     pool.release(enemy);
     const reused = pool.spawn('shooter', 270, 100);
     expect(reused).toBe(enemy);
-    expect(reused.currentHp).toBe(165);
+    expect(reused.currentHp).toBe(275);
+    expect(rectangles).toHaveLength(0);
     expect(reused.collisionDamage).toBe(21);
   });
 
@@ -296,8 +298,15 @@ describe('difficulty combat integration', () => {
     expect(delayedCall.mock.calls[0][0]).toBe(650);
     delayedCall.mock.calls[0][1]();
     expect(hit.mock.calls[1][0]).toBeCloseTo(40);
+    expect(boss.protectionActive).toBe(true);
+    expect(boss.damage(100)).toBe(0);
+    boss.update(2_050);
+    expect(boss.protectionActive).toBe(false);
     boss.damage(79200 * 0.21);
     expect(boss.phase).toBe(2);
     expect(hpBars[1].width).toBeCloseTo(430 * 0.79);
+    boss.update(2_000);
+    expect(boss.protectionActive).toBe(true);
+    expect(boss.damage(100)).toBe(0);
   });
 });
