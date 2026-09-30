@@ -21,11 +21,11 @@ describe('homing missile targeting', () => {
     const stats = new PlayerStats();
     stats.attackCores = 5;
     stats.rapidCores = 5;
-    expect(stats.missileFlightMultiplier).toBeCloseTo(1.25);
-    expect(stats.missileDamageMultiplier).toBeCloseTo(1.6 * 1.05);
+    expect(stats.missileFlightMultiplier).toBeCloseTo(1.2);
+    expect(stats.missileDamageMultiplier).toBeCloseTo(1.48 * 1.05);
     stats.activateBerserk();
-    expect(stats.missileFlightMultiplier).toBeCloseTo(1.25 * 1.25);
-    expect(stats.missileDamageMultiplier).toBeCloseTo(1.6 * 1.05 * 1.3);
+    expect(stats.missileFlightMultiplier).toBeCloseTo(1.2 * 1.25);
+    expect(stats.missileDamageMultiplier).toBeCloseTo(1.48 * 1.05 * 1.3);
     const base = {
       attackCores: 0,
       rapidCores: 0,
@@ -36,7 +36,7 @@ describe('homing missile targeting', () => {
       hpRatio: 1,
       phoenixReady: false,
       recent: [],
-      missileLevel: 5,
+      missileLevel: 4,
       missileOverdrive: 2,
     };
     const missileWeight = (overdrive: number) =>

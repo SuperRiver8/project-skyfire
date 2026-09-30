@@ -11,6 +11,7 @@ export const skyTyrantConfig: BossConfig = {
   transitionMs: 550,
   deathMs: 1300,
   displayScale: 1.18,
+  protectionShield: { durationMs: 3_000, refreshMs: 5_000 },
   attacks: [
     // 圣羽风暴（金羽刃弹幕）
     { id: 'feather_storm', intervalMs: [1900, 1550, 1250], unlockPhase: 1 },

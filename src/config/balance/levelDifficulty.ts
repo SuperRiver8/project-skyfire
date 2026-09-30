@@ -12,25 +12,27 @@ export interface LevelDifficulty {
   readonly damage: number;
   readonly bossHp: number;
   readonly bossFireRate: number;
+  readonly bossScale: number;
   readonly itemDropCount: number;
   readonly itemDropDensity: number;
 }
 
-function createDifficulty(target: number, itemDropCount = 1): LevelDifficulty {
+function createDifficulty(target: number): LevelDifficulty {
   const increase = target - 1;
-  // 沿用已有分配标准：数量/耐久取增幅的 50%，速度/射频取 25%，弹速取 40%，伤害取 15%。
+  // 敌机耐久按目标难度增长，其余沿用数量 50%、速度/射频 25%、弹速 40%、伤害 15% 的增幅。
   return {
     target,
     enemyCount: 1 + increase * 0.5,
     spawnDensity: 1 + increase * 0.5,
     enemySpeed: 1 + increase * 0.25,
     bulletSpeed: 1 + increase * 0.4,
-    enemyHp: 1 + increase * 0.5,
+    enemyHp: target,
     fireRate: 1 + increase * 0.25,
     damage: 1 + increase * 0.15,
     bossHp: 1 + increase * 0.5,
     bossFireRate: 1 + increase * 0.25,
-    itemDropCount,
+    bossScale: 1 + increase * 0.12,
+    itemDropCount: 1,
     itemDropDensity: target,
   };
 }
@@ -38,11 +40,11 @@ function createDifficulty(target: number, itemDropCount = 1): LevelDifficulty {
 // 替换目标值后从原有基准重新推导各项，不与上一版参数重复叠加。
 export const levelDifficulties: Readonly<Record<number, LevelDifficulty>> = {
   1: createDifficulty(1),
-  2: createDifficulty(1.5),
-  3: createDifficulty(2),
-  4: createDifficulty(2.5),
-  // 仅第五关双份掉落；掉落频率仍由各关目标难度决定。
-  5: createDifficulty(3, 2),
+  2: createDifficulty(2),
+  3: createDifficulty(3),
+  4: createDifficulty(4),
+  // 所有关卡单个掉落；掉落频率仍由各关目标难度决定。
+  5: createDifficulty(5),
 };
 
 export function getLevelDifficulty(levelId: number): LevelDifficulty {
@@ -76,7 +78,7 @@ export function scaleEnemyConfig(
     ...config,
     maxHp: Math.round(config.maxHp * difficulty.enemyHp),
     speed: config.speed * difficulty.enemySpeed,
-    collisionDamage: config.collisionDamage * difficulty.damage,
+    collisionDamage: Math.round(config.collisionDamage * difficulty.damage),
     exp: config.exp / difficulty.enemyCount,
     fireIntervalMs:
       config.fireIntervalMs === undefined
@@ -102,6 +104,7 @@ export function scaleBossConfig(
   return {
     ...config,
     maxHp: Math.round(config.maxHp * hpMultiplier * difficulty.bossHp),
+    displayScale: config.displayScale * difficulty.bossScale,
     attacks: config.attacks.map((attack) => ({
       ...attack,
       // 护盾保持原覆盖率；只加快攻击技能，首次等待和技能内预警不缩短。

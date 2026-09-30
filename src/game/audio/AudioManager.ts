@@ -197,9 +197,13 @@ export class AudioManager {
     const minimumGap =
       id === 'player_shoot'
         ? 90
-        : id === 'pickup' || id === 'pickup_max'
-          ? 0
-          : 50;
+        : id === 'enemy_hit' || id === 'critical'
+          ? 80
+          : id === 'enemy_explosion'
+            ? 100
+            : id === 'pickup' || id === 'pickup_max'
+              ? 0
+              : 50;
     if (now - (this.lastPlayed.get(id) ?? -Infinity) < minimumGap) return;
     this.lastPlayed.set(id, now);
     try {
@@ -221,6 +225,10 @@ export class AudioManager {
       oscillator.connect(gain).connect(context.destination);
       oscillator.start(start);
       oscillator.stop(start + duration);
+      oscillator.onended = () => {
+        oscillator.disconnect();
+        gain.disconnect();
+      };
       if (noise > 0) this.playNoise(context, start, duration, noise);
     } catch {
       /* 浏览器阻止自动播放时，战斗逻辑仍可继续。 */
@@ -255,6 +263,11 @@ export class AudioManager {
     source.connect(filter).connect(gain).connect(context.destination);
     source.start(start);
     source.stop(start + duration);
+    source.onended = () => {
+      source.disconnect();
+      filter.disconnect();
+      gain.disconnect();
+    };
   }
   setMusicVolume(value: number): void {
     this.musicVolume = Math.max(0, Math.min(1, value));

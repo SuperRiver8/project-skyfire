@@ -1,9 +1,31 @@
 import { playerBalance } from '../../config/balance/playerBalance';
+import {
+  capUpgradeLevel,
+  playerUpgradeConfig,
+} from '../../config/items/progression';
 
 export class PlayerStats {
-  attackCores = 0;
-  rapidCores = 0;
-  critCores = 0;
+  private attackLevel = 0;
+  private rapidLevel = 0;
+  private critLevel = 0;
+  get attackCores(): number {
+    return this.attackLevel;
+  }
+  set attackCores(value: number) {
+    this.attackLevel = capUpgradeLevel(value);
+  }
+  get rapidCores(): number {
+    return this.rapidLevel;
+  }
+  set rapidCores(value: number) {
+    this.rapidLevel = capUpgradeLevel(value);
+  }
+  get critCores(): number {
+    return this.critLevel;
+  }
+  set critCores(value: number) {
+    this.critLevel = capUpgradeLevel(value);
+  }
   berserkMs = 0;
   magnetMs = 0;
   private combatMs = 0;
@@ -30,9 +52,12 @@ export class PlayerStats {
   }
   get fireRateMultiplier(): number {
     const synergy = this.attackCores >= 3 && this.rapidCores >= 3 ? 1.05 : 1;
-    const redline = this.rapidCores >= 5 && this.berserkMs > 0 ? 1.15 : 1;
+    const redline =
+      this.rapidCores >= playerUpgradeConfig.maxLevel && this.berserkMs > 0
+        ? 1.15
+        : 1;
     const loading =
-      this.rapidCores >= 5 &&
+      this.rapidCores >= playerUpgradeConfig.maxLevel &&
       this.target &&
       this.combatMs - this.targetLastMs <= 900 &&
       this.combatMs - this.targetStartMs >= 2_000
@@ -63,10 +88,13 @@ export class PlayerStats {
     return this.attackCores >= 3 && this.rapidCores >= 3;
   }
   get destructionCore(): boolean {
-    return this.attackCores >= 5 && this.critCores >= 5;
+    return (
+      this.attackCores >= playerUpgradeConfig.maxLevel &&
+      this.critCores >= playerUpgradeConfig.maxLevel
+    );
   }
   get attackOverload(): boolean {
-    return this.attackCores >= 5;
+    return this.attackCores >= playerUpgradeConfig.maxLevel;
   }
   get critChainState(): { streak: number; guaranteed: boolean } {
     return { streak: this.critStreak, guaranteed: this.guaranteedCrit };
@@ -93,7 +121,8 @@ export class PlayerStats {
     }
     const crit = roll < this.critChance;
     this.critStreak = crit ? this.critStreak + 1 : 0;
-    if (this.critCores >= 5 && this.critStreak >= 3) this.guaranteedCrit = true;
+    if (this.critCores >= playerUpgradeConfig.maxLevel && this.critStreak >= 3)
+      this.guaranteedCrit = true;
     return { crit, enhanced: false };
   }
   activateBerserk(): void {

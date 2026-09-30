@@ -60,7 +60,10 @@ export class LaserWeapon extends BaseWeapon {
           this.enemies.damageEnemy(enemy, damage);
       }
       const boss = this.enemies.boss;
-      if (boss?.isActive() && Math.abs(boss.x - x) < width / 2 + 75)
+      if (
+        boss?.isActive() &&
+        Math.abs(boss.x - x) < width / 2 + boss.hitboxWidth / 2
+      )
         this.enemies.damageBoss(damage * 0.6);
     }
     this.visibleMs = weaponBalance.laser.durationMs;

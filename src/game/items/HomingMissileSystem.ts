@@ -1,3 +1,7 @@
+import {
+  capUpgradeLevel,
+  playerUpgradeConfig,
+} from '../../config/items/progression';
 import Phaser from 'phaser';
 import type { BossController } from '../bosses/BossController';
 import type { Enemy } from '../enemies/Enemy';
@@ -7,7 +11,12 @@ import type { PlayerStats } from '../player/PlayerStats';
 import { ObjectPool } from '../utils/ObjectPool';
 import { GAME_HEIGHT, GAME_WIDTH } from '../viewport';
 import { chooseMissileTarget, type MissileCandidate } from './HomingTargeting';
-import { canvasArt, fillLinear, fillPoly, strokeLine } from '../visuals/pseudo3d';
+import {
+  canvasArt,
+  fillLinear,
+  fillPoly,
+  strokeLine,
+} from '../visuals/pseudo3d';
 
 type Target = Enemy | BossController;
 const BASE_DAMAGE = 24;
@@ -57,7 +66,16 @@ function ensureMissileArt(scene: Phaser.Scene): void {
       16,
     );
     // 弹头
-    fillPoly(ctx, [[6, 0], [3, 5], [9, 5]], 0xff3b30, 1);
+    fillPoly(
+      ctx,
+      [
+        [6, 0],
+        [3, 5],
+        [9, 5],
+      ],
+      0xff3b30,
+      1,
+    );
     // 高光
     strokeLine(ctx, 6, 3, 6, 14, 0xffffff, 1.2, 0.8);
   });
@@ -67,6 +85,7 @@ class HomingMissile extends Phaser.GameObjects.Image {
   target: Target | undefined;
   targetToken = 0;
   ageMs = 0;
+  retargetMs = 0;
   angle = -Math.PI / 2;
   private readonly trailX = [0, 0, 0, 0, 0, 0];
   private readonly trailY = [0, 0, 0, 0, 0, 0];
@@ -86,6 +105,7 @@ class HomingMissile extends Phaser.GameObjects.Image {
     this.setPosition(x, y).setRotation(0).setActive(true).setVisible(true);
     this.angle = -Math.PI / 2;
     this.ageMs = 0;
+    this.retargetMs = 0;
     this.assign(target);
     this.trailX.fill(x);
     this.trailY.fill(y);
@@ -134,7 +154,7 @@ class HomingMissile extends Phaser.GameObjects.Image {
     for (let i = length; i > 0; i -= 1) {
       graphics.lineStyle(
         level >= 2 ? 3 : 2,
-        level >= 5 ? 0xffe19a : 0xff9b54,
+        level >= playerUpgradeConfig.maxLevel ? 0xffe19a : 0xff9b54,
         0.65 * (1 - i / (length + 1)),
       );
       graphics.lineBetween(
@@ -170,6 +190,8 @@ export class HomingMissileSystem {
   private readonly pool: ObjectPool<HomingMissile>;
   private readonly trails: Phaser.GameObjects.Graphics;
   private hasTrails = false;
+  private trailDrawMs = 0;
+  private readonly assignments = new Map<Target, number>();
   private fireMs = 0;
   private launchSerial = 0;
   level = 0;
@@ -187,20 +209,35 @@ export class HomingMissileSystem {
   }
 
   addStack(): void {
-    if (this.level < 5) this.level += 1;
-    else this.overdrive = Math.min(3, this.overdrive + 1);
+    if (this.level < playerUpgradeConfig.maxLevel) this.level += 1;
+    else
+      this.overdrive = Math.min(
+        playerUpgradeConfig.missileOverdriveMax,
+        this.overdrive + 1,
+      );
     this.aircraft.setMissileLevel(this.level);
   }
 
   restore(level: number, overdrive: number): void {
-    this.level = Math.max(0, Math.min(5, level));
-    this.overdrive = Math.max(0, Math.min(3, overdrive));
+    this.level = capUpgradeLevel(level);
+    this.overdrive = Math.max(
+      0,
+      Math.min(
+        playerUpgradeConfig.missileOverdriveMax,
+        Math.round(overdrive) || 0,
+      ),
+    );
     this.aircraft.setMissileLevel(this.level);
   }
 
   update(deltaMs: number): void {
-    if (this.hasTrails) this.trails.clear();
-    this.hasTrails = false;
+    this.trailDrawMs += deltaMs;
+    const redraw = this.trailDrawMs >= 1000 / 30;
+    if (redraw) {
+      this.trailDrawMs %= 1000 / 30;
+      if (this.hasTrails) this.trails.clear();
+      this.hasTrails = false;
+    }
     if (this.level === 0) return;
     const interval = 1000 / (this.level * 2);
     this.fireMs = Math.min(this.fireMs + deltaMs, interval * 2);
@@ -211,13 +248,20 @@ export class HomingMissileSystem {
     const speed = BASE_SPEED * this.stats.missileFlightMultiplier;
     const turn = TURN_SPEED * this.stats.missileFlightMultiplier;
     for (const missile of this.pool.activeItems()) {
-      if (missile.target && !this.targetActive(missile))
+      missile.retargetMs = Math.max(0, missile.retargetMs - deltaMs);
+      if (missile.target && !this.targetActive(missile)) {
+        missile.assign(undefined);
+        missile.retargetMs = 0;
+      }
+      if (!missile.target && missile.ageMs >= 170 && missile.retargetMs <= 0) {
         missile.assign(this.chooseTarget(missile.x, missile.y, missile));
-      if (!missile.target && missile.ageMs >= 170)
-        missile.assign(this.chooseTarget(missile.x, missile.y, missile));
+        missile.retargetMs = 100;
+      }
       missile.advance(deltaMs, speed, turn);
-      missile.drawTrail(this.trails, this.level);
-      this.hasTrails = true;
+      if (redraw) {
+        missile.drawTrail(this.trails, this.level);
+        this.hasTrails = true;
+      }
       if (
         missile.target &&
         missile.ageMs > 170 &&
@@ -232,7 +276,9 @@ export class HomingMissileSystem {
 
   private launch(): void {
     const side = this.launchSerial++ % 2 === 0 ? -1 : 1;
-    const x = this.aircraft.x + side * (this.level >= 5 ? 34 : 26);
+    const x =
+      this.aircraft.x +
+      side * (this.level >= playerUpgradeConfig.maxLevel ? 34 : 26);
     const y = this.aircraft.y - 11;
     this.pool.acquire().activate(x, y, this.chooseTarget(x, y));
     this.onLaunch(this.level >= 4);
@@ -254,15 +300,19 @@ export class HomingMissileSystem {
     exclude?: HomingMissile,
   ): Target | undefined {
     const candidates: MissileCandidate<Target>[] = [];
+    this.assignments.clear();
+    for (const missile of this.pool.activeItems())
+      if (missile !== exclude && missile.target && this.targetActive(missile))
+        this.assignments.set(
+          missile.target,
+          (this.assignments.get(missile.target) ?? 0) + 1,
+        );
     const add = (target: Target, priority: number, hp: number) => {
-      let assigned = 0;
-      for (const missile of this.pool.activeItems())
-        if (missile !== exclude && missile.remembers(target)) assigned += 1;
       candidates.push({
         target,
         priority,
         hp,
-        assigned,
+        assigned: this.assignments.get(target) ?? 0,
         distance: Math.hypot(target.x - x, target.y - y),
       });
     };
@@ -293,9 +343,13 @@ export class HomingMissileSystem {
         ? this.enemies.damageEnemyDetailed(target, damage).crit
         : this.enemies.damageBossDetailed(damage).crit;
     const radius =
-      BASE_RADIUS * (this.level >= 5 ? 1.2 : 1) * (crit ? 1.15 : 1);
+      BASE_RADIUS *
+      (this.level >= playerUpgradeConfig.maxLevel ? 1.2 : 1) *
+      (crit ? 1.15 : 1);
     this.enemies.spawnExplosion(x, y, (radius / BASE_RADIUS) * 0.8, crit);
-    const splash = damage * (this.stats.attackCores >= 5 ? 1.15 : 1);
+    const splash =
+      damage *
+      (this.stats.attackCores >= playerUpgradeConfig.maxLevel ? 1.15 : 1);
     for (const enemy of this.enemies.enemies.activeEnemies()) {
       if (enemy === target) continue;
       const distance = Math.hypot(enemy.x - x, enemy.y - y);

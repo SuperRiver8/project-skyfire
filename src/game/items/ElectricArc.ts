@@ -1,3 +1,4 @@
+import { capUpgradeLevel } from '../../config/items/progression';
 import Phaser from 'phaser';
 import { electricArcBalance as balance } from '../../config/balance/electricArcBalance';
 import type { Enemy } from '../enemies/Enemy';
@@ -21,7 +22,7 @@ export class ElectricArc {
   }
 
   setStacks(value: number): void {
-    this.stacks = Math.max(0, Math.min(balance.maxStacks, value));
+    this.stacks = capUpgradeLevel(value);
   }
 
   update(
@@ -48,12 +49,13 @@ export class ElectricArc {
       playerX,
       sourceY,
       range,
-      this.stacks >= 5 ? 3 : this.stacks >= 3 ? 2 : 1,
+      this.stacks >= balance.maxStacks ? 3 : this.stacks >= 3 ? 2 : 1,
     );
     const boss = this.enemies.boss;
     const bossInRange =
       boss?.isDamageable() &&
-      Math.hypot(boss.x - playerX, boss.y - sourceY) <= range + 70;
+      Math.hypot(boss.x - playerX, boss.y - sourceY) <=
+        range + (boss?.hitboxWidth ?? 140) / 2;
     if (targets.length === 0 && !bossInRange) return;
     const beamWidth = this.stacks >= 4 ? 7 : 3 + this.stacks * 0.5;
     for (const target of targets) {
@@ -83,7 +85,7 @@ export class ElectricArc {
         if (!target.isActive()) continue;
         const { x, y } = target;
         const killed = this.enemies.damageEnemy(target, damage);
-        if (killed && this.stacks >= 5) {
+        if (killed && this.stacks >= balance.maxStacks) {
           let jump: Enemy | undefined;
           for (const enemy of this.enemies.enemies.activeEnemies()) {
             if (

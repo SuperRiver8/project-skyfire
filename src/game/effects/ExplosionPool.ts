@@ -14,6 +14,7 @@ export class ExplosionPool {
   }
 
   spawn(x: number, y: number, scale = 1, bright = false): void {
+    if (this.pool.activeCount >= 16) return;
     this.pool.acquire().activate(x, y, scale, bright);
   }
 

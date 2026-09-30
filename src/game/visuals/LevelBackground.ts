@@ -26,6 +26,8 @@ const random = (seed: number): number => {
 export class LevelBackground {
   private readonly base: Phaser.GameObjects.Graphics;
   private readonly motion: Phaser.GameObjects.Graphics;
+  private readonly cachedBase: Phaser.GameObjects.Image;
+  private drawMs = 1000 / 30;
   private readonly particles: Particle[];
   private elapsed = 0;
   private nextShootingStar = 3;
@@ -49,7 +51,13 @@ export class LevelBackground {
         phase: random(i * 4 + 15) * Math.PI * 2,
       }),
     );
-    this.drawStatic();
+    const key = `background_static_${id}`;
+    if (!scene.textures.exists(key)) {
+      this.drawStatic();
+      this.base.generateTexture(key, GAME_WIDTH, GAME_HEIGHT);
+    }
+    this.base.setVisible(false);
+    this.cachedBase = scene.add.image(0, 0, key).setOrigin(0).setDepth(-1000);
     this.update(0);
   }
 
@@ -63,6 +71,9 @@ export class LevelBackground {
       if (particle.y < -15) particle.y = GAME_HEIGHT + 15;
     }
 
+    this.drawMs += deltaMs;
+    if (this.drawMs < 1000 / 30) return;
+    this.drawMs %= 1000 / 30;
     const g = this.motion;
     g.clear();
     switch (this.id) {
@@ -86,6 +97,7 @@ export class LevelBackground {
 
   destroy(): void {
     this.base.destroy();
+    this.cachedBase.destroy();
     this.motion.destroy();
   }
 

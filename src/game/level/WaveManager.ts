@@ -1,4 +1,5 @@
 import type { LevelConfig, SpawnGroupConfig } from '../../config/levels/types';
+import { levelProgressConfig } from '../../config/levels/progression';
 import { GAME_WIDTH } from '../viewport';
 import { spawnX } from './SpawnManager';
 import {
@@ -20,17 +21,29 @@ export class WaveManager {
   elapsedMs = 0;
   readonly groups: PendingGroup[];
   private completed = false;
+  private warned = false;
   private idleMs = 0;
   private fillerSerial = 0;
 
   constructor(
     private readonly level: LevelConfig,
-    private readonly spawn: (enemyId: string, x: number, y: number) => void,
+    private readonly spawn: (
+      enemyId: string,
+      x: number,
+      y: number,
+      filler?: boolean,
+    ) => void,
     private readonly onComplete: () => void,
     private readonly difficulty: LevelDifficulty = getLevelDifficulty(level.id),
+    private readonly onBossWarning: () => void = () => {},
   ) {
+    const timelineScale =
+      level.durationMs / (level.waveTimelineMs ?? level.durationMs);
     const groups = level.waves.flatMap((wave) =>
-      wave.groups.map((config) => ({ config, startAtMs: wave.startAtMs })),
+      wave.groups.map((config) => ({
+        config,
+        startAtMs: Math.round(wave.startAtMs * timelineScale),
+      })),
     );
     // 已有的数量翻倍属于当前版本基准，新难度只在此基础上应用一次。
     const counts = allocateEnemyCounts(
@@ -41,8 +54,13 @@ export class WaveManager {
       const count = counts[index];
       // 常规间隔最低 100ms；原本的 1ms 等同时生成配置保持原样。
       let intervalMs = Math.min(
-        config.intervalMs,
-        Math.max(100, Math.round(config.intervalMs / difficulty.spawnDensity)),
+        config.intervalMs <= 1 ? config.intervalMs : Infinity,
+        Math.max(
+          100,
+          Math.round(
+            (config.intervalMs * timelineScale) / difficulty.spawnDensity,
+          ),
+        ),
       );
       const availableMs = level.durationMs - startAtMs;
       if (count > 1 && availableMs > 0) {
@@ -65,6 +83,15 @@ export class WaveManager {
     // 失焦恢复时只推进一个有限时间片，避免整关 Wave 同帧爆发。
     const stepMs = Math.min(100, Math.max(0, deltaMs));
     this.elapsedMs += stepMs;
+    if (
+      !this.warned &&
+      this.level.bossId &&
+      this.elapsedMs >=
+        this.level.durationMs - levelProgressConfig.bossWarningMs
+    ) {
+      this.warned = true;
+      this.onBossWarning();
+    }
     let spawnedThisUpdate = false;
     for (const group of this.groups) {
       while (
@@ -116,7 +143,7 @@ export class WaveManager {
           : 'shooter';
     const left = 0.22 + (this.fillerSerial % 3) * 0.08;
     this.fillerSerial += 1;
-    this.spawn(fillerId, GAME_WIDTH * left, -24);
-    this.spawn(fillerId, GAME_WIDTH * (1 - left), -24);
+    this.spawn(fillerId, GAME_WIDTH * left, -24, true);
+    this.spawn(fillerId, GAME_WIDTH * (1 - left), -24, true);
   }
 }

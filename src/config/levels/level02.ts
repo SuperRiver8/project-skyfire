@@ -1,3 +1,4 @@
+import { levelProgressConfig } from './progression';
 import type { LevelConfig } from './types';
 
 export const level02: LevelConfig = {
@@ -5,7 +6,8 @@ export const level02: LevelConfig = {
   name: '交叉火力',
   chapter: 1,
   backgroundId: 'neon_city',
-  durationMs: 90_000,
+  durationMs: levelProgressConfig.levels[2].bossAtMs,
+  waveTimelineMs: levelProgressConfig.levels[2].waveTimelineMs,
   waves: [
     {
       startAtMs: 0,

@@ -146,7 +146,7 @@ export class MissileWeapon extends BaseWeapon {
           target,
           weaponBalance.missile.damage * this.stats.attackMultiplier,
           weaponBalance.missile.radius * (this.level >= 3 ? 1.25 : 1),
-          this.level >= 5,
+          this.level >= weaponBalance.missile.maxLevel,
         );
     }
     this.targetIndex += count;

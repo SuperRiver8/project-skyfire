@@ -1,3 +1,4 @@
+import { levelProgressConfig } from './progression';
 import type { LevelConfig } from './types';
 
 export const level03: LevelConfig = {
@@ -5,7 +6,8 @@ export const level03: LevelConfig = {
   name: '红色警戒',
   chapter: 1,
   backgroundId: 'red_alert',
-  durationMs: 95_000,
+  durationMs: levelProgressConfig.levels[3].bossAtMs,
+  waveTimelineMs: levelProgressConfig.levels[3].waveTimelineMs,
   waves: [
     {
       startAtMs: 0,

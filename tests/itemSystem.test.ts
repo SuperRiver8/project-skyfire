@@ -30,7 +30,7 @@ describe('item drop rules', () => {
     ).toBe(6);
     expect(Object.keys(itemConfigs)).not.toContain('emp');
     expect(
-      itemWeights({ ...baseDrop, spreadLevel: 5 }).find(
+      itemWeights({ ...baseDrop, spreadLevel: 4 }).find(
         ({ value }) => value === 'spread_gun',
       )?.weight,
     ).toBe(0);
@@ -40,7 +40,7 @@ describe('item drop rules', () => {
     const weights = Object.fromEntries(
       itemWeights({
         ...baseDrop,
-        attackCores: 5,
+        attackCores: 4,
         hpRatio: 0.2,
         shields: 4,
         phoenixReady: true,
@@ -56,6 +56,20 @@ describe('item drop rules', () => {
 });
 
 describe('permanent and timed items', () => {
+  it('clamps old five-level builds to four and enables configured maximum effects', () => {
+    const stats = new PlayerStats();
+    stats.attackCores = 5;
+    stats.rapidCores = 5;
+    stats.critCores = 5;
+    expect([stats.attackCores, stats.rapidCores, stats.critCores]).toEqual([
+      4, 4, 4,
+    ]);
+    expect(stats.attackOverload).toBe(true);
+    expect(stats.destructionCore).toBe(true);
+    const health = new PlayerHealth();
+    health.shields = 5;
+    expect(health.shields).toBe(4);
+  });
   it('applies core synergy, capped rapid fire, and the crit chain', () => {
     const stats = new PlayerStats();
     stats.attackCores = 3;

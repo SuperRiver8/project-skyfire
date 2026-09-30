@@ -1,5 +1,6 @@
+import { playerUpgradeConfig } from '../items/progression';
 export const electricArcBalance = {
-  maxStacks: 5,
+  maxStacks: playerUpgradeConfig.maxLevel,
   attackIntervalMs: 220,
   baseRange: 260,
   rangePerStack: 40,

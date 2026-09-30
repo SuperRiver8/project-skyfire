@@ -26,7 +26,7 @@ vi.mock('phaser', () => ({ default: { GameObjects: { Image: class {} } } }));
 describe('level difficulty', () => {
   it('keeps level one unchanged and scales enemies from independent base configs', () => {
     expect([1, 2, 3, 4, 5].map((id) => getLevelDifficulty(id).target)).toEqual([
-      1, 1.5, 2, 2.5, 3,
+      1, 2, 3, 4, 5,
     ]);
     expect(scaleEnemyConfig(shooterConfig, getLevelDifficulty(1))).toEqual(
       shooterConfig,
@@ -34,20 +34,20 @@ describe('level difficulty', () => {
     const original = structuredClone(chargerConfig);
     const scaled = scaleEnemyConfig(chargerConfig, getLevelDifficulty(5));
     expect(scaled).toMatchObject({
-      maxHp: 140,
-      speed: 108,
-      chargeSpeed: 600,
+      maxHp: 350,
+      speed: 144,
+      chargeSpeed: 720,
       chargeDelayMs: 650,
-      fireIntervalMs: 1600,
+      fireIntervalMs: 1200,
     });
-    expect(scaled.collisionDamage).toBeCloseTo(28.6);
+    expect(scaled.collisionDamage).toBe(35);
     expect(scaleEnemyConfig(chargerConfig, getLevelDifficulty(5))).toEqual(
       scaled,
     );
     expect(chargerConfig).toEqual(original);
     expect(
       scaleEnemyConfig(zigzagFighterConfig, getLevelDifficulty(5)),
-    ).toMatchObject({ zigzagFrequency: 0.006, zigzagAmplitude: 48 });
+    ).toMatchObject({ zigzagFrequency: 0.008, zigzagAmplitude: 48 });
   });
 
   it('allocates extra aircraft once for the whole level instead of rounding every group up', () => {
@@ -59,11 +59,13 @@ describe('level difficulty', () => {
   it('distributes integer experience without multiplying stats again on repeated spawns', () => {
     const scene = {} as Phaser.Scene;
     const factory = new EnemyFactory(scene, getLevelDifficulty(5));
-    const configs = Array.from({ length: 20 }, () =>
+    const configs = Array.from({ length: 30 }, () =>
       factory.getConfig('heavy_tank'),
     );
     expect(
-      configs.every(({ maxHp, exp }) => maxHp === 520 && Number.isInteger(exp)),
+      configs.every(
+        ({ maxHp, exp }) => maxHp === 1300 && Number.isInteger(exp),
+      ),
     ).toBe(true);
     expect(configs.reduce((total, config) => total + config.exp, 0)).toBe(
       10 * heavyTankConfig.exp,
@@ -101,7 +103,7 @@ describe('level difficulty', () => {
   });
 
   it('scales final boss health and attack intervals while preserving warnings and the shield', () => {
-    const expectedHp = [3500, 7500, 21263, 34125, 52800];
+    const expectedHp = [3500, 9000, 28350, 48750, 79200];
     for (let levelId = 1; levelId <= 5; levelId += 1) {
       const level = getLevelConfig(levelId);
       const base = getBossConfig(level.bossId!);
@@ -112,6 +114,9 @@ describe('level difficulty', () => {
         getLevelDifficulty(levelId),
       );
       expect(scaled.maxHp).toBe(expectedHp[levelId - 1]);
+      expect(scaled.displayScale).toBeCloseTo(
+        base.displayScale * (1 + (levelId - 1) * 0.12),
+      );
       expect(
         phaseForHp(scaled.maxHp * base.phase2Threshold, scaled.maxHp, base.id),
       ).toBe(2);
