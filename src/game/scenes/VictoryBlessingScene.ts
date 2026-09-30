@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
-import tangtangUrl from '../../assets/blessing-tangtang.png';
-import xiangxiangUrl from '../../assets/blessing-xiangxiang.png';
+import tangtangUrl from '../../assets/blessing-tangtang.webp';
+import xiangxiangUrl from '../../assets/blessing-xiangxiang.webp';
 import type { RunState } from './GameScene';
 import type { ResultData } from './ResultScene';
 import { GAME_HEIGHT, GAME_WIDTH } from '../viewport';

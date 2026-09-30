@@ -1,7 +1,7 @@
-import tangtangUrl from '../../assets/blessing-tangtang.png';
-import xiangxiangUrl from '../../assets/blessing-xiangxiang.png';
-import encouragementUrl from '../../assets/result-encouragement-xiaoyin.png';
-import victoryUrl from '../../assets/result-victory-xiaoyin.png';
+import tangtangUrl from '../../assets/blessing-tangtang.webp';
+import xiangxiangUrl from '../../assets/blessing-xiangxiang.webp';
+import encouragementUrl from '../../assets/result-encouragement-xiaoyin.webp';
+import victoryUrl from '../../assets/result-victory-xiaoyin.webp';
 
 const requested = new Map<string, Promise<void>>();
 const downloaded = new Set<string>();
