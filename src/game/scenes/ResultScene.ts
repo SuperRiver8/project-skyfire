@@ -5,8 +5,8 @@ import { GAME_HEIGHT, GAME_WIDTH } from '../viewport';
 import { canvasArt, radialBall } from '../visuals/pseudo3d';
 import { ensureExplosionArt } from '../effects/Explosion';
 import { createResultArtwork } from '../visuals/ResultArtwork';
-import victoryUrl from '../../assets/result-victory-xiaoyin.png';
-import encouragementUrl from '../../assets/result-encouragement-xiaoyin.png';
+import victoryUrl from '../../assets/result-victory-xiaoyin.webp';
+import encouragementUrl from '../../assets/result-encouragement-xiaoyin.webp';
 import { RESULT_ART_KEYS } from '../visuals/ResultArtwork';
 
 export interface ResultData {
