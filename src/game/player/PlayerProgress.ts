@@ -8,7 +8,7 @@ export class PlayerProgress {
   pendingUpgrades = 0;
 
   gain(exp: number): void {
-    this.exp += Math.max(0, exp);
+    this.exp += integer(exp);
     while (this.exp >= expRequired(this.level)) {
       this.exp -= expRequired(this.level);
       this.level += 1;
@@ -20,3 +20,4 @@ export class PlayerProgress {
     this.pendingUpgrades = Math.max(0, this.pendingUpgrades - 1);
   }
 }
+import { integer } from '../utils/Integer';

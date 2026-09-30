@@ -8,15 +8,12 @@ import { createResultArtwork } from '../visuals/ResultArtwork';
 import victoryUrl from '../../assets/result-victory-xiaoyin.webp';
 import encouragementUrl from '../../assets/result-encouragement-xiaoyin.webp';
 import { RESULT_ART_KEYS } from '../visuals/ResultArtwork';
+import { isBetterRun, type RunRecord } from '../combat/RunScore';
 
-export interface ResultData {
-  victory: boolean;
+export interface ResultData extends RunRecord {
   levelId: number;
-  elapsedTimeMs: number;
-  kills: number;
-  damageDealt: number;
-  damageTaken: number;
-  score: number;
+  stageKills: number;
+  stageTimeMs: number;
 }
 
 const DOT_KEY = 'firework_dot';
@@ -155,8 +152,11 @@ export class ResultScene extends Phaser.Scene {
       save.totalCoins += coins;
       if (data.levelId === 5) save.stats.bossesKilled += 1;
     }
-    save.stats.totalKills += data.kills;
-    save.stats.totalPlayTimeMs += data.elapsedTimeMs;
+    // 前面已通关的统计已经入账，这里只写入最后一关，避免重复累计。
+    save.stats.totalKills += data.stageKills;
+    save.stats.totalPlayTimeMs += data.stageTimeMs;
+    save.lastRun = data;
+    if (isBetterRun(data, save.bestRun)) save.bestRun = data;
     manager.save(save);
 
     this.cameras.main.setBackgroundColor(0x07111f);
@@ -297,12 +297,17 @@ export class ResultScene extends Phaser.Scene {
     panel.lineBetween(48, 714, 492, 714);
 
     this.add
-      .text(GAME_WIDTH / 2, 609, `战 报 · 第 ${data.levelId} 关`, {
-        fontFamily: 'Microsoft YaHei, sans-serif',
-        fontSize: '21px',
-        fontStyle: 'bold',
-        color: '#e8f7ff',
-      })
+      .text(
+        GAME_WIDTH / 2,
+        609,
+        `累计战报 · 第 ${data.startLevel}–${data.levelId} 关`,
+        {
+          fontFamily: 'Microsoft YaHei, sans-serif',
+          fontSize: '21px',
+          fontStyle: 'bold',
+          color: '#e8f7ff',
+        },
+      )
       .setOrigin(0.5)
       .setDepth(16);
     const stat = (x: number, y: number, label: string): void => {
@@ -314,7 +319,7 @@ export class ResultScene extends Phaser.Scene {
         })
         .setDepth(16);
     };
-    stat(54, 643, `用时 ${(data.elapsedTimeMs / 1000).toFixed(1)} 秒`);
+    stat(54, 643, `用时 ${Math.floor(data.elapsedTimeMs / 1000)} 秒`);
     stat(284, 643, `击落 ${data.kills} 架`);
     stat(54, 679, `造成伤害 ${Math.round(data.damageDealt)}`);
     stat(284, 679, `受到伤害 ${Math.round(data.damageTaken)}`);

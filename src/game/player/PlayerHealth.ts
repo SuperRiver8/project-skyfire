@@ -1,16 +1,32 @@
 import { playerBalance } from '../../config/balance/playerBalance';
+import { integer } from '../utils/Integer';
 
 export class PlayerHealth {
-  hp: number = playerBalance.maxHp;
+  private currentHp: number = playerBalance.maxHp;
   invulnerableMs = 0;
-  shields = 0;
+  private currentShields = 0;
   godMode = false;
+
+  get hp(): number {
+    return this.currentHp;
+  }
+  set hp(value: number) {
+    this.currentHp = Math.min(playerBalance.maxHp, integer(value));
+  }
+  get shields(): number {
+    return this.currentShields;
+  }
+  set shields(value: number) {
+    this.currentShields = Math.min(5, integer(value));
+  }
 
   update(deltaMs: number): void {
     this.invulnerableMs = Math.max(0, this.invulnerableMs - deltaMs);
   }
 
   hit(damage: number): boolean {
+    damage = integer(damage);
+    if (damage === 0) return false;
     if (this.hp <= 0 || this.invulnerableMs > 0 || this.godMode) return false;
     if (this.shields > 0) this.shields -= 1;
     else this.hp = Math.max(0, this.hp - Math.max(0, damage));
@@ -19,7 +35,7 @@ export class PlayerHealth {
   }
 
   heal(amount: number): number {
-    const value = Math.max(0, amount);
+    const value = integer(amount);
     const restored = Math.min(playerBalance.maxHp - this.hp, value);
     this.hp += restored;
     return value - restored;

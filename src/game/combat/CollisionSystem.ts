@@ -4,6 +4,8 @@ import type { EnemyController } from '../enemies/EnemyController';
 import type { PlayerAircraft } from '../player/PlayerAircraft';
 import type { PlayerHealth } from '../player/PlayerHealth';
 import { playerBalance } from '../../config/balance/playerBalance';
+import { SpatialIndex } from './SpatialIndex';
+import type { Enemy } from '../enemies/Enemy';
 
 export function overlaps(
   ax: number,
@@ -19,6 +21,7 @@ export function overlaps(
 }
 
 export class CollisionSystem {
+  private readonly spatial = new SpatialIndex<Enemy>();
   constructor(
     private readonly bullets: BulletPool,
     private readonly enemies: EnemyController,
@@ -34,9 +37,16 @@ export class CollisionSystem {
   ) {}
 
   update(): void {
+    this.spatial.rebuild(this.enemies.enemies.activeEnemies());
     for (const bullet of this.bullets.activeBullets()) {
-      for (const enemy of this.enemies.enemies.activeEnemies()) {
+      for (const enemy of this.spatial.query(
+        bullet.x,
+        bullet.y,
+        bullet.displayWidth,
+        bullet.displayHeight,
+      )) {
         if (
+          enemy.isActive() &&
           overlaps(
             bullet.x,
             bullet.y,

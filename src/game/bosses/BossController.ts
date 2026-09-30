@@ -22,6 +22,7 @@ import {
   type LevelDifficulty,
 } from '../../config/balance/levelDifficulty';
 import { bossSkills, type BossEffect, type SkillContext } from './BossSkills';
+import { integer } from '../utils/Integer';
 
 export type BossState =
   | 'ENTER'
@@ -193,17 +194,19 @@ export class BossController {
       this.skillTimers.set(id, elapsed - durationMs);
   }
 
-  damage(amount: number): void {
-    if (!this.isActive() || this.state === 'ENTER') return;
+  damage(amount: number): number {
+    if (!this.isDamageable()) return 0;
     // 护盾矩阵开启时大幅减伤
     if (this.shieldMs > 0) amount *= 0.25;
-    this.hp = Math.max(0, this.hp - amount);
+    const applied = Math.min(this.hp, integer(amount));
+    if (applied === 0) return 0;
+    this.hp -= applied;
     this.hpFill.width = (430 * this.hp) / this.config.maxHp;
     this.hitFlashMs = 95;
     this.sprite.setTint(0xffffff).setTintMode(Phaser.TintModes.FILL);
     if (this.hp === 0) {
       this.beginDeath();
-      return;
+      return applied;
     }
     const next = phaseForHp(this.hp, this.config.maxHp, this.config.id);
     if (next > this.phase) {
@@ -217,6 +220,7 @@ export class BossController {
       );
       this.onPhase(next);
     }
+    return applied;
   }
 
   update(deltaMs: number): void {

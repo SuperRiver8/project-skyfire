@@ -25,7 +25,12 @@ export class WaveManager {
 
   constructor(
     private readonly level: LevelConfig,
-    private readonly spawn: (enemyId: string, x: number, y: number) => void,
+    private readonly spawn: (
+      enemyId: string,
+      x: number,
+      y: number,
+      filler?: boolean,
+    ) => void,
     private readonly onComplete: () => void,
     private readonly difficulty: LevelDifficulty = getLevelDifficulty(level.id),
   ) {
@@ -116,7 +121,7 @@ export class WaveManager {
           : 'shooter';
     const left = 0.22 + (this.fillerSerial % 3) * 0.08;
     this.fillerSerial += 1;
-    this.spawn(fillerId, GAME_WIDTH * left, -24);
-    this.spawn(fillerId, GAME_WIDTH * (1 - left), -24);
+    this.spawn(fillerId, GAME_WIDTH * left, -24, true);
+    this.spawn(fillerId, GAME_WIDTH * (1 - left), -24, true);
   }
 }

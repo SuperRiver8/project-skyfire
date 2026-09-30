@@ -2,6 +2,7 @@ import type Phaser from 'phaser';
 import { enemyBulletBalance } from '../../config/balance/enemyBulletBalance';
 import { ObjectPool } from '../utils/ObjectPool';
 import { EnemyBullet } from './EnemyBullet';
+import { integer } from '../utils/Integer';
 import {
   getLevelDifficulty,
   type LevelDifficulty,
@@ -11,6 +12,7 @@ export class EnemyBulletPool {
   private readonly pool: ObjectPool<EnemyBullet>;
   private readonly trails: Phaser.GameObjects.Graphics;
   private hasTrails = false;
+  private trailDrawMs = 0;
 
   constructor(
     scene: Phaser.Scene,
@@ -39,19 +41,24 @@ export class EnemyBulletPool {
       y,
       vx * this.difficulty.bulletSpeed,
       vy * this.difficulty.bulletSpeed,
-      damage * this.difficulty.damage,
+      integer(damage * this.difficulty.damage),
       target,
       tint,
     );
     return bullet;
   }
 
-  update(deltaMs: number): void {
-    if (this.hasTrails) this.trails.clear();
-    this.hasTrails = false;
+  update(deltaMs: number, visualDeltaMs = deltaMs): void {
+    this.trailDrawMs += visualDeltaMs;
+    const redraw = this.trailDrawMs >= 1000 / 30;
+    if (redraw) {
+      this.trailDrawMs %= 1000 / 30;
+      if (this.hasTrails) this.trails.clear();
+      this.hasTrails = false;
+    }
     for (const bullet of this.pool.activeItems()) {
       bullet.advance(deltaMs);
-      if (bullet.isHoming) {
+      if (redraw && bullet.isHoming) {
         this.drawTrail(bullet);
         this.hasTrails = true;
       }
@@ -78,6 +85,8 @@ export class EnemyBulletPool {
 
   clear(): void {
     for (const bullet of this.pool.activeItems()) this.pool.release(bullet);
+    this.trails.clear();
+    this.hasTrails = false;
   }
 
   clearWithin(x: number, y: number, radius: number): number {

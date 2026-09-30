@@ -27,6 +27,8 @@ export class PlayerAircraft extends Phaser.GameObjects.Container {
   private readonly phoenixHalo: Phaser.GameObjects.Arc;
   private readonly missilePods: Phaser.GameObjects.Graphics;
   private readonly electricAura: Phaser.GameObjects.Graphics;
+  private electricDrawAt = -Infinity;
+  private electricDrawn = false;
   private form = 0;
   private flightMs = 0;
   private hitFlashMs = 0;
@@ -250,8 +252,16 @@ export class PlayerAircraft extends Phaser.GameObjects.Container {
 
   private drawElectricAura(active: boolean): void {
     const graphics = this.electricAura;
+    if (!active) {
+      if (this.electricDrawn) graphics.clear();
+      this.electricDrawn = false;
+      return;
+    }
+    if (this.electricDrawn && this.flightMs - this.electricDrawAt < 1000 / 30)
+      return;
+    this.electricDrawAt = this.flightMs;
+    this.electricDrawn = true;
     graphics.clear();
-    if (!active) return;
     // 电弧沿机身椭圆轨道持续旋转，取代机头前方的横向电击板。
     const time = this.flightMs / 260;
     for (let arc = 0; arc < 3; arc += 1) {

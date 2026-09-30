@@ -17,7 +17,8 @@ import { ItemManager } from '../items/ItemManager';
 import { BossController } from '../bosses/BossController';
 import { CombatEffects } from '../effects/CombatEffects';
 import { AudioManager } from '../audio/AudioManager';
-import { feedbackConfig } from '../../config/effects/feedback';
+import { RunScore, type ScoreState } from '../combat/RunScore';
+import { integer } from '../utils/Integer';
 import { SaveManager } from '../save/SaveManager';
 import { PausePanel } from '../ui/PausePanel';
 import { GameSoundButton } from '../ui/GameSoundButton';
@@ -38,6 +39,13 @@ import type { ItemId } from '../../config/items/items';
 import { getLevelDifficulty } from '../../config/balance/levelDifficulty';
 
 export interface RunState {
+  scoreState?: ScoreState;
+  totals?: {
+    kills: number;
+    damageDealt: number;
+    damageTaken: number;
+    elapsedTimeMs: number;
+  };
   hp: number;
   shields: number;
   playerLevel: number;
@@ -84,9 +92,9 @@ export class GameScene extends Phaser.Scene {
   private boss: BossController | undefined;
   private effects!: CombatEffects;
   private audio!: AudioManager;
-  private hitStopMs = 0;
+  private runScore!: RunScore;
+  private scoreText!: Phaser.GameObjects.Text;
   private pausePanel: PausePanel | undefined;
-  private score = 0;
   private kills = 0;
   private damageDealt = 0;
   private damageTaken = 0;
@@ -109,7 +117,7 @@ export class GameScene extends Phaser.Scene {
     this.pausePanel = undefined;
     this.debugOverlay = undefined;
     this.stressMs = 0;
-    this.score = 0;
+    this.runScore = new RunScore(this.levelId, this.runState?.scoreState);
     this.kills = 0;
     this.damageDealt = 0;
     this.damageTaken = 0;
@@ -118,7 +126,7 @@ export class GameScene extends Phaser.Scene {
     const levelConfig = getLevelConfig(this.levelId);
     this.difficulty = getLevelDifficulty(this.levelId);
     this.background = new LevelBackground(this, levelConfig.backgroundId);
-    const scoreText = this.add.text(20, 22, '得分 0', {
+    this.scoreText = this.add.text(20, 22, `得分 ${this.runScore.total}`, {
       fontFamily: 'Arial, sans-serif',
       fontSize: '20px',
       color: '#e8f7ff',
@@ -150,11 +158,10 @@ export class GameScene extends Phaser.Scene {
     );
     this.audio = new AudioManager();
     this.audio.setSfxVolume(settings.sfxVolume);
-    this.hitStopMs = 0;
     this.progress = new PlayerProgress();
     if (this.runState) {
-      this.progress.level = this.runState.playerLevel;
-      this.progress.exp = this.runState.exp;
+      this.progress.level = Math.max(1, integer(this.runState.playerLevel));
+      this.progress.exp = integer(this.runState.exp);
       aircraft.setForm(
         this.progress.level >= 6 ? 3 : this.progress.level >= 3 ? 2 : 1,
       );
@@ -167,9 +174,10 @@ export class GameScene extends Phaser.Scene {
     this.pickups = new PickupPool(this);
     this.enemyController = new EnemyController(
       this,
-      (score) => {
-        this.score = score;
-        scoreText.setText(`得分 ${score}`);
+      (basePoints) => {
+        if (basePoints === 0) return;
+        this.runScore.awardEnemy(basePoints, this.levelId);
+        this.scoreText.setText(`得分 ${this.runScore.total}`);
       },
       (x, y, exp, elite) => {
         this.kills += 1;
@@ -182,7 +190,6 @@ export class GameScene extends Phaser.Scene {
         this.effects.hit(x, y, damage, crit, killed, enhanced);
         if (enhanced || crit) this.audio.playSfx('critical');
         this.audio.playSfx(killed ? 'enemy_explosion' : 'enemy_hit');
-        if (killed) this.hitStopMs = feedbackConfig.killHitStopMs;
       },
       this.difficulty,
     );
@@ -262,7 +269,7 @@ export class GameScene extends Phaser.Scene {
 
     this.waveManager = new WaveManager(
       levelConfig,
-      (id, x, y) => this.enemyController.spawn(id, x, y),
+      (id, x, y, filler) => this.enemyController.spawn(id, x, y, filler),
       () => this.onWavesComplete(),
       this.difficulty,
     );
@@ -301,19 +308,39 @@ export class GameScene extends Phaser.Scene {
         this.health,
         this.weaponManager,
         {
-          kill: () => this.enemyController.enemies.clear(),
-          boss: () => this.spawnBoss(),
-          upgrade: () => this.gainExp(expRequired(this.progress.level)),
+          kill: () => {
+            this.runScore.markPractice();
+            this.enemyController.enemies.clear();
+          },
+          boss: () => {
+            this.runScore.markPractice();
+            this.spawnBoss();
+          },
+          upgrade: () => {
+            this.runScore.markPractice();
+            this.gainExp(expRequired(this.progress.level));
+          },
           heal: () => {
+            this.runScore.markPractice();
             this.health.heal(100);
             this.hud.update(this.health, this.progress);
           },
           god: () => {
+            this.runScore.markPractice();
             this.health.godMode = !this.health.godMode;
           },
-          stress: () => this.startStress(),
-          next: () => this.showLevelComplete(),
-          items: () => this.itemManager.spawnPreview(),
+          stress: () => {
+            this.runScore.markPractice();
+            this.startStress();
+          },
+          next: () => {
+            this.runScore.markPractice();
+            this.showLevelComplete();
+          },
+          items: () => {
+            this.runScore.markPractice();
+            this.itemManager.spawnPreview();
+          },
         },
       );
     }
@@ -339,18 +366,18 @@ export class GameScene extends Phaser.Scene {
   update(_time: number, deltaMs: number): void {
     if (this.gameOver || this.pausePanel) return;
     this.background.update(deltaMs);
-    if (this.hitStopMs > 0) {
-      this.hitStopMs -= deltaMs;
-      this.effects.update(deltaMs);
-      return;
-    }
+    // 击杀只播放视觉反馈，不暂停移动/碰撞；密集击杀时仍可持续操控。
+    this.elapsedTimeMs += deltaMs;
     this.playerController.update(deltaMs);
     this.weaponManager.update(deltaMs);
     this.enemyController.update(
       deltaMs * this.itemManager.enemySpeedFactor,
       deltaMs,
     );
-    this.enemyBullets.update(deltaMs * this.itemManager.bulletSpeedFactor);
+    this.enemyBullets.update(
+      deltaMs * this.itemManager.bulletSpeedFactor,
+      deltaMs,
+    );
     this.boss?.update(deltaMs * this.itemManager.bossSpeedFactor);
     if (this.gameOver) return;
     if (this.stressMs > 0) {
@@ -382,7 +409,6 @@ export class GameScene extends Phaser.Scene {
     this.waveManager.update(deltaMs, this.enemyController.enemies.activeCount);
     this.health.update(deltaMs);
     this.hud.update(this.health, this.progress);
-    this.elapsedTimeMs += deltaMs;
     this.aircraft.setAlpha(
       this.health.invulnerableMs > 0 &&
         Math.floor(this.health.invulnerableMs / 80) % 2 === 0
@@ -449,14 +475,19 @@ export class GameScene extends Phaser.Scene {
   }
 
   private result(victory: boolean): ResultData {
+    const totals = this.runState?.totals;
     return {
+      ...this.runScore.snapshot(),
       victory,
       levelId: this.levelId,
-      elapsedTimeMs: this.elapsedTimeMs,
-      kills: this.kills,
-      damageDealt: this.damageDealt,
-      damageTaken: this.damageTaken,
-      score: this.score,
+      levelReached: this.levelId,
+      elapsedTimeMs: integer(this.elapsedTimeMs) + (totals?.elapsedTimeMs ?? 0),
+      kills: this.kills + (totals?.kills ?? 0),
+      damageDealt: this.damageDealt + (totals?.damageDealt ?? 0),
+      damageTaken: this.damageTaken + (totals?.damageTaken ?? 0),
+      score: this.runScore.total,
+      stageKills: this.kills,
+      stageTimeMs: integer(this.elapsedTimeMs),
     };
   }
 
@@ -569,6 +600,8 @@ export class GameScene extends Phaser.Scene {
   private showLevelComplete(): void {
     if (this.gameOver) return;
     this.gameOver = true;
+    this.runScore.completeLevel(this.levelId);
+    this.scoreText.setText(`得分 ${this.runScore.total}`);
     this.audio.playSfx('victory');
     if (this.levelId < 5) {
       const manager = new SaveManager();
@@ -579,7 +612,7 @@ export class GameScene extends Phaser.Scene {
       );
       save.totalCoins += getLevelConfig(this.levelId).rewards.coins;
       save.stats.totalKills += this.kills;
-      save.stats.totalPlayTimeMs += this.elapsedTimeMs;
+      save.stats.totalPlayTimeMs += integer(this.elapsedTimeMs);
       save.stats.bossesKilled += 1;
       manager.save(save);
       const runState = this.snapshotRun();
@@ -602,7 +635,15 @@ export class GameScene extends Phaser.Scene {
   }
 
   private snapshotRun(): RunState {
+    const result = this.result(true);
     return {
+      scoreState: this.runScore.snapshot(),
+      totals: {
+        kills: result.kills,
+        damageDealt: result.damageDealt,
+        damageTaken: result.damageTaken,
+        elapsedTimeMs: result.elapsedTimeMs,
+      },
       hp: this.health.hp,
       shields: this.health.shields,
       playerLevel: this.progress.level,

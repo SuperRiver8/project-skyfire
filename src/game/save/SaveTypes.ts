@@ -1,3 +1,5 @@
+import type { RunRecord } from '../combat/RunScore';
+
 export interface SaveData {
   version: number;
   highestUnlockedLevel: number;
@@ -9,6 +11,8 @@ export interface SaveData {
     damageNumbers: boolean;
   };
   stats: { totalKills: number; totalPlayTimeMs: number; bossesKilled: number };
+  lastRun?: RunRecord;
+  bestRun?: RunRecord;
 }
 
 export const DEFAULT_SAVE: SaveData = {

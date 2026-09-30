@@ -10,6 +10,8 @@ import {
 import { aircraftVisuals } from '../../config/aircraft/aircraftVisuals';
 import { GAME_HEIGHT, GAME_WIDTH } from '../viewport';
 import { ensureFlameArt, FLAME_KEY } from '../visuals/flameArt';
+import { integer } from '../utils/Integer';
+import { ellipseImage } from '../visuals/ellipseImage';
 
 const alternateArt: Record<string, string[]> = {
   enemy_scout: ['enemy_scout', 'enemy_scout_ace', 'enemy_scout_dart'],
@@ -38,15 +40,16 @@ export class Enemy extends Phaser.GameObjects.Image {
   private visualController = new AircraftVisualController(
     aircraftVisuals.light,
   );
-  private readonly shadow: Phaser.GameObjects.Ellipse;
+  private readonly shadow: Phaser.GameObjects.Image;
   private readonly flame: Phaser.GameObjects.Image;
   private readonly flameCore: Phaser.GameObjects.Image;
-  private readonly leftWing: Phaser.GameObjects.Ellipse;
-  private readonly rightWing: Phaser.GameObjects.Ellipse;
-  private readonly canopy: Phaser.GameObjects.Ellipse;
+  private readonly leftWing: Phaser.GameObjects.Image;
+  private readonly rightWing: Phaser.GameObjects.Image;
+  private readonly canopy: Phaser.GameObjects.Image;
   private trailMs = 0;
   private baseScale = 1;
   spawnToken = 0;
+  countsForScore = true;
 
   constructor(scene: Phaser.Scene) {
     ensureEnemyArt(scene);
@@ -54,8 +57,7 @@ export class Enemy extends Phaser.GameObjects.Image {
     super(scene, 0, 0, 'enemy_scout');
     this.setDepth(6).setActive(false).setVisible(false);
     scene.add.existing(this);
-    this.shadow = scene.add
-      .ellipse(0, 0, 50, 19, 0x020915, 0.2)
+    this.shadow = ellipseImage(scene, 0, 0, 50, 19, 0x020915, 0.2)
       .setDepth(4)
       .setVisible(false);
     this.flame = scene.add
@@ -68,16 +70,13 @@ export class Enemy extends Phaser.GameObjects.Image {
       .setFlipY(true)
       .setDepth(5)
       .setVisible(false);
-    this.leftWing = scene.add
-      .ellipse(0, 0, 19, 5, 0xffe4d2, 0.2)
+    this.leftWing = ellipseImage(scene, 0, 0, 19, 5, 0xffe4d2, 0.2)
       .setDepth(7)
       .setVisible(false);
-    this.rightWing = scene.add
-      .ellipse(0, 0, 19, 5, 0xffe4d2, 0.2)
+    this.rightWing = ellipseImage(scene, 0, 0, 19, 5, 0xffe4d2, 0.2)
       .setDepth(7)
       .setVisible(false);
-    this.canopy = scene.add
-      .ellipse(0, 0, 10, 14, 0xffffff, 0.12)
+    this.canopy = ellipseImage(scene, 0, 0, 10, 14, 0xffffff, 0.12)
       .setDepth(7)
       .setVisible(false);
   }
@@ -85,7 +84,8 @@ export class Enemy extends Phaser.GameObjects.Image {
   activate(x: number, y: number, config: EnemyConfig): void {
     this.spawnToken += 1;
     this.config = config;
-    this.hp = config.maxHp;
+    this.hp = integer(config.maxHp);
+    this.countsForScore = true;
     this.hitFlashMs = 0;
     this.setPosition(x, y);
     this.spawnX = x;
@@ -102,7 +102,7 @@ export class Enemy extends Phaser.GameObjects.Image {
     );
     // 确定性伪随机 ±14% 体型浮动，同机型大小不尽相同（命中框不变）
     const jitter =
-      0.86 + ((((serial + 1) * 2654435761) >>> 0) % 1000 / 1000) * 0.28;
+      0.86 + (((((serial + 1) * 2654435761) >>> 0) % 1000) / 1000) * 0.28;
     this.baseScale = (config.scale ?? 1) * jitter;
     this.visualController = new AircraftVisualController(
       config.aiType === 'TANK'
@@ -276,7 +276,7 @@ export class Enemy extends Phaser.GameObjects.Image {
 
   takeDamage(damage: number): boolean {
     if (!this.config || this.hp <= 0) return false;
-    this.hp = Math.max(0, this.hp - Math.max(0, damage));
+    this.hp = Math.max(0, this.hp - integer(damage));
     this.hitFlashMs = enemyBalance.hitFlashMs;
     this.setTint(0xffffff).setTintMode(Phaser.TintModes.FILL);
     return this.hp === 0;
@@ -347,7 +347,7 @@ export class Enemy extends Phaser.GameObjects.Image {
   }
 
   get scoreValue(): number {
-    return this.config?.score ?? 0;
+    return this.countsForScore ? integer(this.config?.score ?? 0) : 0;
   }
 
   get expValue(): number {

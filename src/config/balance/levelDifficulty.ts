@@ -38,11 +38,11 @@ function createDifficulty(target: number, itemDropCount = 1): LevelDifficulty {
 // 替换目标值后从原有基准重新推导各项，不与上一版参数重复叠加。
 export const levelDifficulties: Readonly<Record<number, LevelDifficulty>> = {
   1: createDifficulty(1),
-  2: createDifficulty(1.5),
-  3: createDifficulty(2),
-  4: createDifficulty(2.5),
+  2: createDifficulty(2),
+  3: createDifficulty(3),
+  4: createDifficulty(4),
   // 仅第五关双份掉落；掉落频率仍由各关目标难度决定。
-  5: createDifficulty(3, 2),
+  5: createDifficulty(5, 2),
 };
 
 export function getLevelDifficulty(levelId: number): LevelDifficulty {
@@ -76,7 +76,7 @@ export function scaleEnemyConfig(
     ...config,
     maxHp: Math.round(config.maxHp * difficulty.enemyHp),
     speed: config.speed * difficulty.enemySpeed,
-    collisionDamage: config.collisionDamage * difficulty.damage,
+    collisionDamage: Math.round(config.collisionDamage * difficulty.damage),
     exp: config.exp / difficulty.enemyCount,
     fireIntervalMs:
       config.fireIntervalMs === undefined

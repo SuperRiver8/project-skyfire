@@ -54,6 +54,7 @@ export class EnemyDeathPool {
   }
 
   spawn(enemy: Enemy): void {
+    if (this.pool.activeCount >= 16) return;
     this.pool.acquire().activate(enemy);
   }
 

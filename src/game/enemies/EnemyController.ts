@@ -9,6 +9,7 @@ import type { BossController } from '../bosses/BossController';
 import type { Enemy } from './Enemy';
 import { EnemyPool } from './EnemyPool';
 import { EnemyDeathPool } from './EnemyDeathPool';
+import { integer } from '../utils/Integer';
 import {
   getLevelDifficulty,
   type LevelDifficulty,
@@ -18,7 +19,7 @@ export class EnemyController {
   readonly enemies: EnemyPool;
   private readonly explosions: ExplosionPool;
   private readonly deaths: EnemyDeathPool;
-  private score = 0;
+  private areaVisualMs = 0;
   private player: PlayerAircraft | undefined;
   private enemyBullets: EnemyBulletPool | undefined;
   private onExplosion:
@@ -29,7 +30,7 @@ export class EnemyController {
 
   constructor(
     private readonly scene: Phaser.Scene,
-    private readonly onScoreChanged: (score: number) => void,
+    private readonly onKillScore: (basePoints: number) => void,
     private readonly onKilled: (
       x: number,
       y: number,
@@ -52,8 +53,8 @@ export class EnemyController {
     this.deaths = new EnemyDeathPool(scene);
   }
 
-  spawn(id: string, x: number, y: number): void {
-    this.enemies.spawn(id, x, y);
+  spawn(id: string, x: number, y: number, filler = false): void {
+    this.enemies.spawn(id, x, y).countsForScore = !filler;
   }
 
   attachCombat(
@@ -83,18 +84,18 @@ export class EnemyController {
     const result = proc ? this.stats?.rollCrit(Random.float()) : undefined;
     const crit = result?.crit ?? false;
     if (crit) damage *= this.stats!.critDamageMultiplier;
+    const applied = this.boss.damage(damage);
     this.onDamage?.(
       this.boss.x,
       this.boss.y,
-      damage,
+      applied,
       crit,
-      this.boss.hp <= damage,
+      this.boss.hp === 0,
       result?.enhanced ?? false,
     );
-    this.boss.damage(damage);
     if (crit && this.stats?.attackOverload)
       this.areaDamage(this.boss.x, this.boss.y, 82, damage * 0.3);
-    return { crit, applied: damage };
+    return { crit, applied };
   }
 
   damageEnemy(enemy: Enemy, damage: number, proc = true): boolean {
@@ -106,12 +107,13 @@ export class EnemyController {
     damage: number,
     proc = true,
   ): { killed: boolean; crit: boolean; applied: number } {
-    if (!enemy.isActive()) return { killed: false, crit: false, applied: 0 };
+    if (!enemy.isActive() || enemy.currentHp <= 0)
+      return { killed: false, crit: false, applied: 0 };
     if (proc) this.stats?.recordTargetHit(enemy);
     const result = proc ? this.stats?.rollCrit(Random.float()) : undefined;
     const crit = result?.crit ?? false;
     if (crit) damage *= this.stats!.critDamageMultiplier;
-    const applied = Math.min(enemy.currentHp, damage);
+    const applied = Math.min(enemy.currentHp, integer(damage));
     const killed = enemy.takeDamage(damage);
     const { x, y } = enemy;
     this.onDamage?.(x, y, applied, crit, killed, result?.enhanced ?? false);
@@ -121,8 +123,7 @@ export class EnemyController {
       if (this.frozen) this.frozenGhost(enemy);
       this.deaths.spawn(enemy);
       this.enemies.release(enemy);
-      this.score += scoreValue;
-      this.onScoreChanged(this.score);
+      this.onKillScore(scoreValue);
       this.onKilled(x, y, expValue, isElite);
     }
     if (crit && this.stats?.attackOverload)
@@ -139,17 +140,20 @@ export class EnemyController {
     damage: number,
     exclude?: Enemy,
   ): void {
-    const ring = this.scene.add
-      .circle(x, y, 14, 0xffaa65, 0)
-      .setStrokeStyle(3, 0xffbd79)
-      .setDepth(28);
-    this.scene.tweens.add({
-      targets: ring,
-      scale: radius / 14,
-      alpha: 0,
-      duration: 260,
-      onComplete: () => ring.destroy(),
-    });
+    if (this.areaVisualMs <= 0) {
+      this.areaVisualMs = 80;
+      const ring = this.scene.add
+        .circle(x, y, 14, 0xffaa65, 0)
+        .setStrokeStyle(3, 0xffbd79)
+        .setDepth(28);
+      this.scene.tweens.add({
+        targets: ring,
+        scale: radius / 14,
+        alpha: 0,
+        duration: 260,
+        onComplete: () => ring.destroy(),
+      });
+    }
     for (const enemy of this.enemies.activeEnemies()) {
       if (enemy === exclude || Math.hypot(enemy.x - x, enemy.y - y) > radius)
         continue;
@@ -172,6 +176,7 @@ export class EnemyController {
   }
 
   update(deltaMs: number, visualDeltaMs = deltaMs): void {
+    this.areaVisualMs = Math.max(0, this.areaVisualMs - visualDeltaMs);
     this.enemies.update(
       deltaMs,
       this.player?.x,
