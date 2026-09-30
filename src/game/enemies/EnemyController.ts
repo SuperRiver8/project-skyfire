@@ -9,6 +9,10 @@ import type { BossController } from '../bosses/BossController';
 import type { Enemy } from './Enemy';
 import { EnemyPool } from './EnemyPool';
 import { EnemyDeathPool } from './EnemyDeathPool';
+import {
+  getLevelDifficulty,
+  type LevelDifficulty,
+} from '../../config/balance/levelDifficulty';
 
 export class EnemyController {
   readonly enemies: EnemyPool;
@@ -41,8 +45,9 @@ export class EnemyController {
       killed: boolean,
       enhanced: boolean,
     ) => void,
+    difficulty: LevelDifficulty = getLevelDifficulty(1),
   ) {
-    this.enemies = new EnemyPool(scene);
+    this.enemies = new EnemyPool(scene, difficulty);
     this.explosions = new ExplosionPool(scene);
     this.deaths = new EnemyDeathPool(scene);
   }

@@ -1,6 +1,11 @@
 import type { LevelConfig, SpawnGroupConfig } from '../../config/levels/types';
 import { GAME_WIDTH } from '../viewport';
 import { spawnX } from './SpawnManager';
+import {
+  allocateEnemyCounts,
+  getLevelDifficulty,
+  type LevelDifficulty,
+} from '../../config/balance/levelDifficulty';
 
 const IDLE_FILL_MS = 950;
 const NEXT_WAVE_GUARD_MS = 1_500;
@@ -22,18 +27,37 @@ export class WaveManager {
     private readonly level: LevelConfig,
     private readonly spawn: (enemyId: string, x: number, y: number) => void,
     private readonly onComplete: () => void,
+    private readonly difficulty: LevelDifficulty = getLevelDifficulty(level.id),
   ) {
-    this.groups = level.waves.flatMap((wave) =>
-      wave.groups.map((group) => ({
-        // 数量翻倍后沿原间隔持续投放，减少波次间的无敌机时间。
-        config: {
-          ...group,
-          count: group.count * 2,
-        },
-        nextAtMs: wave.startAtMs,
-        spawned: 0,
-      })),
+    const groups = level.waves.flatMap((wave) =>
+      wave.groups.map((config) => ({ config, startAtMs: wave.startAtMs })),
     );
+    // 已有的数量翻倍属于当前版本基准，新难度只在此基础上应用一次。
+    const counts = allocateEnemyCounts(
+      groups.map(({ config }) => config.count * 2),
+      difficulty.enemyCount,
+    );
+    this.groups = groups.map(({ config, startAtMs }, index) => {
+      const count = counts[index];
+      // 常规间隔最低 100ms；原本的 1ms 等同时生成配置保持原样。
+      let intervalMs = Math.min(
+        config.intervalMs,
+        Math.max(100, Math.round(config.intervalMs / difficulty.spawnDensity)),
+      );
+      const availableMs = level.durationMs - startAtMs;
+      if (count > 1 && availableMs > 0) {
+        // 增加数量不延后 Boss；最后一架最晚在既定阶段结束时生成。
+        intervalMs = Math.min(
+          intervalMs,
+          Math.max(1, Math.floor(availableMs / (count - 1))),
+        );
+      }
+      return {
+        config: { ...config, count, intervalMs },
+        nextAtMs: startAtMs,
+        spawned: 0,
+      };
+    });
   }
 
   update(deltaMs: number, activeEnemies: number): void {
@@ -80,7 +104,8 @@ export class WaveManager {
       return;
     }
     this.idleMs += stepMs;
-    if (this.idleMs < IDLE_FILL_MS) return;
+    if (this.idleMs < Math.round(IDLE_FILL_MS / this.difficulty.spawnDensity))
+      return;
     this.idleMs = 0;
     // 只在清屏的长间隔补一对轻型敌机，不打断既定波次。
     const fillerId =

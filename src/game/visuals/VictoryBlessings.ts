@@ -8,7 +8,7 @@ export const VICTORY_BLESSING_KEYS = [
 
 const blessings = [
   { key: VICTORY_BLESSING_KEYS[0], name: '糖糖', accent: 0xffd76a },
-  { key: VICTORY_BLESSING_KEYS[1], name: '想想', accent: 0x78ddf5 },
+  { key: VICTORY_BLESSING_KEYS[1], name: '锶锶', accent: 0x78ddf5 },
 ] as const;
 
 const HOLD_MS = 2000;

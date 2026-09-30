@@ -2,13 +2,20 @@ import type Phaser from 'phaser';
 import { enemyBulletBalance } from '../../config/balance/enemyBulletBalance';
 import { ObjectPool } from '../utils/ObjectPool';
 import { EnemyBullet } from './EnemyBullet';
+import {
+  getLevelDifficulty,
+  type LevelDifficulty,
+} from '../../config/balance/levelDifficulty';
 
 export class EnemyBulletPool {
   private readonly pool: ObjectPool<EnemyBullet>;
   private readonly trails: Phaser.GameObjects.Graphics;
   private hasTrails = false;
 
-  constructor(scene: Phaser.Scene) {
+  constructor(
+    scene: Phaser.Scene,
+    private readonly difficulty: LevelDifficulty = getLevelDifficulty(1),
+  ) {
     this.pool = new ObjectPool(
       () => new EnemyBullet(scene),
       enemyBulletBalance.initialPoolSize,
@@ -26,7 +33,16 @@ export class EnemyBulletPool {
     tint?: number,
   ): EnemyBullet {
     const bullet = this.pool.acquire();
-    bullet.activate(x, y, vx, vy, damage, target, tint);
+    // 普通敌机、Boss 和持续技能共用此入口，速度和伤害只在发射时增强一次。
+    bullet.activate(
+      x,
+      y,
+      vx * this.difficulty.bulletSpeed,
+      vy * this.difficulty.bulletSpeed,
+      damage * this.difficulty.damage,
+      target,
+      tint,
+    );
     return bullet;
   }
 
