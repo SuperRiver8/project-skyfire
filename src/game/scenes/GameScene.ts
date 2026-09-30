@@ -35,6 +35,7 @@ import {
 import { GAME_WIDTH } from '../viewport';
 import { WeaponManager, type WeaponId } from '../weapons/WeaponManager';
 import type { ItemId } from '../../config/items/items';
+import { getLevelDifficulty } from '../../config/balance/levelDifficulty';
 
 export interface RunState {
   hp: number;
@@ -79,6 +80,7 @@ export class GameScene extends Phaser.Scene {
   private shieldAura!: ShieldAura;
   private runState: RunState | undefined;
   private levelId = 1;
+  private difficulty = getLevelDifficulty(1);
   private boss: BossController | undefined;
   private effects!: CombatEffects;
   private audio!: AudioManager;
@@ -114,6 +116,7 @@ export class GameScene extends Phaser.Scene {
     this.elapsedTimeMs = 0;
     this.toastSerial = 0;
     const levelConfig = getLevelConfig(this.levelId);
+    this.difficulty = getLevelDifficulty(this.levelId);
     this.background = new LevelBackground(this, levelConfig.backgroundId);
     const scoreText = this.add.text(20, 22, '得分 0', {
       fontFamily: 'Arial, sans-serif',
@@ -181,6 +184,7 @@ export class GameScene extends Phaser.Scene {
         this.audio.playSfx(killed ? 'enemy_explosion' : 'enemy_hit');
         if (killed) this.hitStopMs = feedbackConfig.killHitStopMs;
       },
+      this.difficulty,
     );
     this.weaponManager = new WeaponManager(
       this,
@@ -199,7 +203,7 @@ export class GameScene extends Phaser.Scene {
           this.weaponManager.upgradeWeapon(id);
       }
     }
-    this.enemyBullets = new EnemyBulletPool(this);
+    this.enemyBullets = new EnemyBulletPool(this, this.difficulty);
     this.enemyController.attachCombat(
       aircraft,
       this.enemyBullets,
@@ -233,6 +237,7 @@ export class GameScene extends Phaser.Scene {
         this.audio.playSfx(
           upgraded ? 'homing_missile_rapid' : 'homing_missile',
         ),
+      this.difficulty,
     );
     if (this.runState) {
       this.itemManager.restore(
@@ -259,6 +264,7 @@ export class GameScene extends Phaser.Scene {
       levelConfig,
       (id, x, y) => this.enemyController.spawn(id, x, y),
       () => this.onWavesComplete(),
+      this.difficulty,
     );
 
     new GameSoundButton(this, 449, 42, settings.sfxVolume > 0, () => {
@@ -497,6 +503,7 @@ export class GameScene extends Phaser.Scene {
       },
       getLevelConfig(this.levelId).bossId,
       getLevelConfig(this.levelId).bossHpMultiplier,
+      this.difficulty,
     );
     this.enemyController.boss = this.boss;
   }

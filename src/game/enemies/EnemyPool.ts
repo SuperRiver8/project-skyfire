@@ -3,13 +3,20 @@ import { enemyBalance } from '../../config/balance/enemyBalance';
 import { ObjectPool } from '../utils/ObjectPool';
 import { Enemy } from './Enemy';
 import { EnemyFactory } from './EnemyFactory';
+import {
+  getLevelDifficulty,
+  type LevelDifficulty,
+} from '../../config/balance/levelDifficulty';
 
 export class EnemyPool {
   private readonly pool: ObjectPool<Enemy>;
   private readonly factory: EnemyFactory;
 
-  constructor(scene: Phaser.Scene) {
-    this.factory = new EnemyFactory(scene);
+  constructor(
+    scene: Phaser.Scene,
+    difficulty: LevelDifficulty = getLevelDifficulty(1),
+  ) {
+    this.factory = new EnemyFactory(scene, difficulty);
     this.pool = new ObjectPool(
       () => this.factory.create(),
       enemyBalance.initialPoolSize,

@@ -19,11 +19,19 @@ import { ElectricArc } from './ElectricArc';
 import { ItemEffects } from './ItemEffects';
 import { rollItem } from './ItemDrop';
 import { HomingMissileSystem } from './HomingMissileSystem';
+import {
+  getLevelDifficulty,
+  type LevelDifficulty,
+} from '../../config/balance/levelDifficulty';
+import { GAME_WIDTH } from '../viewport';
+
+const DROP_MARGIN = 40;
+const DROP_SPACING = 64;
 
 export class ItemManager {
   private readonly pool: ObjectPool<ItemPickup>;
   private phoenixReady = false;
-  private dropMs: number = itemDropConfig.firstDropMs;
+  private dropMs: number;
   private readonly electricArc: ElectricArc;
   private readonly homingMissiles: HomingMissileSystem;
   private readonly effects: ItemEffects;
@@ -43,7 +51,11 @@ export class ItemManager {
     private readonly enemyBullets: EnemyBulletPool,
     private readonly onItem: (message: string, maxed: boolean) => void,
     onMissileLaunch: (upgraded: boolean) => void = () => {},
+    private readonly difficulty: LevelDifficulty = getLevelDifficulty(1),
   ) {
+    this.dropMs = Math.round(
+      itemDropConfig.firstDropMs / difficulty.itemDropDensity,
+    );
     this.pool = new ObjectPool(() => new ItemPickup(scene), 24);
     this.electricArc = new ElectricArc(scene, enemies);
     this.homingMissiles = new HomingMissileSystem(
@@ -57,7 +69,18 @@ export class ItemManager {
   }
 
   private spawnRandomDrop(): void {
-    this.spawnDrop(40 + Random.float() * 460, -20);
+    const count = this.difficulty.itemDropCount;
+    const laneWidth = (GAME_WIDTH - DROP_MARGIN * 2) / count;
+    const inset = count > 1 ? DROP_SPACING / 2 : 0;
+    // 每个道具独立抽取，分区掉落留出间距，避免双份道具完全重叠。
+    for (let index = 0; index < count; index += 1) {
+      const x =
+        DROP_MARGIN +
+        index * laneWidth +
+        inset +
+        Random.float() * (laneWidth - inset * 2);
+      this.spawnDrop(x, -20);
+    }
   }
 
   private spawnDrop(x: number, y: number, elite = false): void {
@@ -81,7 +104,19 @@ export class ItemManager {
   }
 
   rollEliteDrop(x: number, y: number): void {
-    if (Random.float() < 0.65) this.spawnDrop(x, y, true);
+    if (Random.float() >= 0.65) return;
+    const count = this.difficulty.itemDropCount;
+    const halfSpread = ((count - 1) * DROP_SPACING) / 2;
+    const centerX =
+      count === 1
+        ? x
+        : Math.max(
+            DROP_MARGIN + halfSpread,
+            Math.min(GAME_WIDTH - DROP_MARGIN - halfSpread, x),
+          );
+    // 精英掉落成功时也给双份；保留原概率，贴边时整组移回画面内。
+    for (let index = 0; index < count; index += 1)
+      this.spawnDrop(centerX + index * DROP_SPACING - halfSpread, y, true);
   }
 
   // 仅由开发环境快捷键调用，便于目视检查全部道具的配色和文字。
@@ -97,9 +132,11 @@ export class ItemManager {
     this.dropMs -= deltaMs;
     if (this.dropMs <= 0) {
       this.spawnRandomDrop();
-      this.dropMs =
-        itemDropConfig.intervalMinMs +
-        Random.float() * itemDropConfig.intervalRandomMs;
+      this.dropMs = Math.round(
+        (itemDropConfig.intervalMinMs +
+          Random.float() * itemDropConfig.intervalRandomMs) /
+          this.difficulty.itemDropDensity,
+      );
     }
     this.freezeMs = Math.max(0, this.freezeMs - deltaMs);
     this.reviveSlowMs = Math.max(0, this.reviveSlowMs - deltaMs);

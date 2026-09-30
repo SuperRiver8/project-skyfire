@@ -10,8 +10,93 @@ import {
   kamikazeConfig,
   shooterConfig,
 } from '../src/config/enemies/advanced';
+import { getLevelDifficulty } from '../src/config/balance/levelDifficulty';
 
 describe('WaveManager', () => {
+  it('adds density without delaying bosses or mutating the base waves', () => {
+    const totals = [90, 113, 120, 151, 64];
+    for (let levelId = 1; levelId <= 5; levelId += 1) {
+      const level = getLevelConfig(levelId);
+      const original = structuredClone(level);
+      let spawned = 0;
+      let completed = 0;
+      const manager = new WaveManager(
+        level,
+        () => spawned++,
+        () => completed++,
+      );
+      expect(
+        manager.groups.reduce((total, group) => total + group.config.count, 0),
+      ).toBe(totals[levelId - 1]);
+      for (let time = 0; time < level.durationMs; time += 100)
+        manager.update(100, 1);
+      expect(spawned).toBe(totals[levelId - 1]);
+      expect(completed).toBe(1);
+      manager.update(100, 0);
+      expect(completed).toBe(1);
+      expect(level).toEqual(original);
+    }
+    const firstGroup = new WaveManager(
+      getLevelConfig(2),
+      () => {},
+      () => {},
+    ).groups[0].config;
+    expect(firstGroup.count).toBe(20);
+    expect(firstGroup.intervalMs).toBe(320);
+    const tankGroup = new WaveManager(
+      getLevelConfig(4),
+      () => {},
+      () => {},
+    ).groups.find(({ config }) => config.enemyId === 'heavy_tank')!;
+    expect(tankGroup.config.intervalMs).toBe(1);
+  });
+
+  it('fills cleared gaps faster but respects the next-wave guard', () => {
+    for (const levelId of [1, 5]) {
+      const level = {
+        ...getLevelConfig(levelId),
+        waves: [
+          {
+            startAtMs: 2000,
+            groups: [
+              {
+                enemyId: 'scout',
+                count: 1,
+                intervalMs: 500,
+                pattern: 'LINE' as const,
+              },
+            ],
+          },
+        ],
+      };
+      const spawns: string[] = [];
+      const manager = new WaveManager(
+        level,
+        (id) => spawns.push(id),
+        () => {},
+      );
+      manager.update(100, 0);
+      const expectedMs = Math.round(
+        950 / getLevelDifficulty(levelId).spawnDensity,
+      );
+      // 下一波保护内即使清屏够久也不能补机。
+      for (let time = 100; time < expectedMs; time += 100)
+        manager.update(100, 0);
+      expect(spawns).toHaveLength(0);
+    }
+
+    const spawns: string[] = [];
+    const manager = new WaveManager(
+      { ...getLevelConfig(5), waves: [] },
+      (id) => spawns.push(id),
+      () => {},
+    );
+    for (let time = 0; time < 400; time += 100) manager.update(100, 0);
+    expect(spawns).toHaveLength(0);
+    manager.update(100, 0);
+    expect(spawns).toEqual(['shooter', 'shooter']);
+  });
+
   it('uses a different background for each level', () => {
     const backgrounds = Array.from(
       { length: 5 },

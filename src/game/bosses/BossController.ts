@@ -17,10 +17,11 @@ import {
 import { ensureBossArt } from './BossArt';
 import { ensureFlameArt, FLAME_KEY } from '../visuals/flameArt';
 import {
-  bossSkills,
-  type BossEffect,
-  type SkillContext,
-} from './BossSkills';
+  getLevelDifficulty,
+  scaleBossConfig,
+  type LevelDifficulty,
+} from '../../config/balance/levelDifficulty';
+import { bossSkills, type BossEffect, type SkillContext } from './BossSkills';
 
 export type BossState =
   | 'ENTER'
@@ -71,10 +72,15 @@ export class BossController {
     private readonly onPhase: (phase: BossPhase) => void,
     private readonly onExplosion: (x: number, y: number) => void,
     bossId = 'mechanical_eagle',
-    private readonly hpMultiplier = 1,
+    hpMultiplier = 1,
+    private readonly difficulty: LevelDifficulty = getLevelDifficulty(1),
   ) {
-    this.config = getBossConfig(bossId);
-    this.hp = Math.round(this.config.maxHp * hpMultiplier);
+    this.config = scaleBossConfig(
+      getBossConfig(bossId),
+      hpMultiplier,
+      difficulty,
+    );
+    this.hp = this.config.maxHp;
     ensureBossArt(scene);
     const key = `boss_${this.config.id}`;
     const vis = this.config.visual;
@@ -192,19 +198,14 @@ export class BossController {
     // 护盾矩阵开启时大幅减伤
     if (this.shieldMs > 0) amount *= 0.25;
     this.hp = Math.max(0, this.hp - amount);
-    this.hpFill.width =
-      (430 * this.hp) / (this.config.maxHp * this.hpMultiplier);
+    this.hpFill.width = (430 * this.hp) / this.config.maxHp;
     this.hitFlashMs = 95;
     this.sprite.setTint(0xffffff).setTintMode(Phaser.TintModes.FILL);
     if (this.hp === 0) {
       this.beginDeath();
       return;
     }
-    const next = phaseForHp(
-      this.hp,
-      this.config.maxHp * this.hpMultiplier,
-      this.config.id,
-    );
+    const next = phaseForHp(this.hp, this.config.maxHp, this.config.id);
     if (next > this.phase) {
       this.phase = next;
       this.state = 'PHASE_TRANSITION';
@@ -405,7 +406,7 @@ export class BossController {
       phase: this.phase,
       x: this.x,
       y: this.y,
-      onLaserHit: this.onLaserHit,
+      onLaserHit: (damage) => this.hitPlayer(damage),
       startDash: (targetX, warningMs, color) =>
         this.startDashWarning(targetX, warningMs, color),
       setShield: (durationMs) => this.setShield(durationMs),
@@ -415,6 +416,11 @@ export class BossController {
   private setShield(durationMs: number): void {
     this.shieldMs = durationMs;
     this.shieldVisual.setVisible(true).setAlpha(0.28);
+  }
+
+  private hitPlayer(damage: number): void {
+    // 激光、领域和冲锋不经过敌弹池，需要单独应用一次伤害倍率。
+    this.onLaserHit(damage * this.difficulty.damage);
   }
 
   private startDashWarning(
@@ -430,7 +436,7 @@ export class BossController {
       if (!this.isActive()) return;
       this.dashVisualMs = aircraftEffectVisuals.bossDashVisualMs;
       this.dashTargetX = targetX;
-      if (Math.abs(this.player.x - targetX) < 38) this.onLaserHit(25);
+      if (Math.abs(this.player.x - targetX) < 38) this.hitPlayer(25);
       this.scene.cameras.main.shake(130, 0.005);
     });
   }
