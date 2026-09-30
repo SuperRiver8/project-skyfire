@@ -1,9 +1,10 @@
 import Phaser from 'phaser';
+import { version } from '../../../package.json';
 import { AudioManager } from '../audio/AudioManager';
 import { SaveManager } from '../save/SaveManager';
 import { createMenuCoverArt } from '../ui/MenuCoverArt';
 import { SoundToggle } from '../ui/SoundToggle';
-import { GAME_WIDTH } from '../viewport';
+import { GAME_HEIGHT, GAME_WIDTH } from '../viewport';
 
 export class MainMenuScene extends Phaser.Scene {
   private readonly onEnter = (): void => {
@@ -97,6 +98,14 @@ export class MainMenuScene extends Phaser.Scene {
         color: '#79a9c0',
       })
       .setOrigin(0.5);
+    this.add
+      .text(GAME_WIDTH - 16, GAME_HEIGHT - 10, `v${version}`, {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '15px',
+        color: '#83ddf8',
+      })
+      .setOrigin(1, 1);
+
     this.input.keyboard?.once('keydown-ENTER', this.onEnter);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () =>
       this.input.keyboard?.off('keydown-ENTER', this.onEnter),
