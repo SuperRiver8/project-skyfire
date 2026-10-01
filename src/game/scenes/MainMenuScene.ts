@@ -5,6 +5,7 @@ import { SaveManager } from '../save/SaveManager';
 import { createMenuCoverArt } from '../ui/MenuCoverArt';
 import { SoundToggle } from '../ui/SoundToggle';
 import { GAME_HEIGHT, GAME_WIDTH } from '../viewport';
+import { riverPlatform } from '../platform/platformClient';
 
 export class MainMenuScene extends Phaser.Scene {
   private readonly onEnter = (): void => {
@@ -111,5 +112,6 @@ export class MainMenuScene extends Phaser.Scene {
       this.input.keyboard?.off('keydown-ENTER', this.onEnter),
     );
     document.getElementById('boot-status')?.remove();
+    riverPlatform.ready();
   }
 }

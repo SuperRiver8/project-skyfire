@@ -19,6 +19,7 @@ import { CombatEffects } from '../effects/CombatEffects';
 import { AudioManager } from '../audio/AudioManager';
 import { RunScore, type ScoreState } from '../combat/RunScore';
 import { integer } from '../utils/Integer';
+import { createRunId } from '../utils/RunId';
 import { SaveManager } from '../save/SaveManager';
 import { PausePanel } from '../ui/PausePanel';
 import { GameSoundButton } from '../ui/GameSoundButton';
@@ -39,6 +40,7 @@ import type { ItemId } from '../../config/items/items';
 import { getLevelDifficulty } from '../../config/balance/levelDifficulty';
 
 export interface RunState {
+  runId?: string;
   scoreState?: ScoreState;
   totals?: {
     kills: number;
@@ -94,6 +96,7 @@ export class GameScene extends Phaser.Scene {
   private effects!: CombatEffects;
   private audio!: AudioManager;
   private runScore!: RunScore;
+  private runId = '';
   private scoreText!: Phaser.GameObjects.Text;
   private pausePanel: PausePanel | undefined;
   private kills = 0;
@@ -120,6 +123,7 @@ export class GameScene extends Phaser.Scene {
     this.debugOverlay = undefined;
     this.stressMs = 0;
     this.runScore = new RunScore(this.levelId, this.runState?.scoreState);
+    this.runId = this.runState?.runId ?? createRunId();
     this.kills = 0;
     this.damageDealt = 0;
     this.damageTaken = 0;
@@ -481,6 +485,7 @@ export class GameScene extends Phaser.Scene {
     const totals = this.runState?.totals;
     return {
       ...this.runScore.snapshot(),
+      runId: this.runId,
       victory,
       levelId: this.levelId,
       levelReached: this.levelId,
@@ -639,6 +644,7 @@ export class GameScene extends Phaser.Scene {
     const result = this.result(true);
     return {
       scoreState: this.runScore.snapshot(),
+      runId: this.runId,
       totals: {
         kills: result.kills,
         damageDealt: result.damageDealt,

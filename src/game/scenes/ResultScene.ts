@@ -9,8 +9,11 @@ import victoryUrl from '../../assets/result-victory-xiaoyin.webp';
 import encouragementUrl from '../../assets/result-encouragement-xiaoyin.webp';
 import { RESULT_ART_KEYS } from '../visuals/ResultArtwork';
 import { isBetterRun, type RunRecord } from '../combat/RunScore';
+import { RunSubmission } from '../platform/RiverPlatform';
+import { riverPlatform } from '../platform/platformClient';
 
 export interface ResultData extends RunRecord {
+  runId: string;
   levelId: number;
   stageKills: number;
   stageTimeMs: number;
@@ -158,6 +161,10 @@ export class ResultScene extends Phaser.Scene {
     save.lastRun = data;
     if (isBetterRun(data, save.bestRun)) save.bestRun = data;
     manager.save(save);
+
+    const submission = new RunSubmission(riverPlatform, data, data.runId);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => submission.dispose());
+    submission.start();
 
     this.cameras.main.setBackgroundColor(0x07111f);
     // 氛围底色
