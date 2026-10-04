@@ -1,0 +1,13 @@
+Generator: built-in image_gen
+Final export: JPEG, 960x540, quality 90, 196122 bytes
+
+Use case: ads-marketing.
+Create one finished horizontal 16:9 promotional banner for the existing Chinese browser arcade aircraft shooter game 天火计划 (Project Skyfire). Compose for a final 960x540 JPG, all lettering must stay legible at this modest resolution.
+Scene: stylized sci-fi aerial battle above a dark navy blue atmospheric sky with subtle cloud formations. Main subject is a striking cyan-blue metallic futuristic fighter with glowing cyan engines, sweeping forward into the action; a large menacing mechanical airborne boss and a few smaller enemy fighters provide scale. Arcing red enemy bullet patterns, bright cyan laser fire and one warm orange explosion evoke vertical arcade shooter gameplay. Keep clear silhouettes and controlled detail, no visual clutter.
+Style: polished illustrated game key art, pseudo-3D metallic aircraft with luminous outlines, cinematic cyan and orange accents, clean bold composition, premium arcade promotional art, no photorealistic humans.
+Layout: visually balanced full-bleed 16:9 landscape, strong readable headline in the left area and action concentrated in right two thirds. Leave safe margins of at least 6% around all text. Title is large bold Chinese lettering with a subtle brushed metallic cyan-white treatment. Smaller English game name directly below. At bottom-left, one concise feature line with even spacing.
+Exact text only:
+"天火计划"
+"PROJECT SKYFIRE"
+"弹幕激战 · 随机强化 · 挑战首领"
+Render Chinese characters accurately. Do not add further slogans or invented claims. No mockup framing, no watermark, no QR code, no platform logos, no fake UI, no extra text. Deliver a complete ready-to-share landscape promo image with exactly 16:9 aspect ratio.
