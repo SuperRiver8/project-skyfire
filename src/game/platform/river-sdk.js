@@ -35,6 +35,10 @@
       if (!/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(runId)) throw new Error('本局 runId 必须是 UUID。');
       await sdk.init(); return request('SUBMIT_SCORE', { score, runId });
     },
+    async getMyLeaderboard(period = 'WEEK') {
+      if (!['WEEK', 'ALL'].includes(period)) throw new Error('请选择 WEEK 或 ALL。');
+      await sdk.init(); return request('GET_MY_LEADERBOARD', { period });
+    },
     async showLeaderboard(period = 'WEEK') {
       if (!['WEEK', 'ALL'].includes(period)) throw new Error('请选择 WEEK 或 ALL。');
       await sdk.init(); return request('SHOW_LEADERBOARD', { period });

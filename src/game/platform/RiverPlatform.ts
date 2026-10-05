@@ -7,6 +7,7 @@ export class RiverPlatform {
   private initialization?: Promise<void>;
   private readySent = false;
   private authRevision = 0;
+  private gameId?: string;
   private readonly listeners = new Set<() => void>();
 
   constructor(
@@ -29,6 +30,7 @@ export class RiverPlatform {
           : undefined,
       );
       if (config.authMode !== 'SDK_V1') return;
+      this.gameId = config.gameId;
       this.user = config.user;
       this.sdk.onAuthChange((user) => this.updateUser(user));
       this.connected = true;
@@ -72,12 +74,66 @@ export class RiverPlatform {
     return user;
   }
 
+  get identityRevision(): number {
+    return this.authRevision;
+  }
+
+  isCurrentUser(userId: string, revision = this.authRevision): boolean {
+    return (
+      this.connected &&
+      this.user?.id === userId &&
+      revision === this.authRevision
+    );
+  }
+
+  async shouldSubmitScore(
+    score: number,
+    userId: string,
+    revision = this.authRevision,
+  ): Promise<boolean> {
+    if (!this.gameId || !this.isCurrentUser(userId, revision))
+      throw new Error('平台游戏或登录状态已改变。');
+    const periods = ['WEEK', 'ALL'] as const;
+    const boards = await Promise.all(
+      periods.map((period) => this.sdk.getMyLeaderboard(period)),
+    );
+    if (!this.isCurrentUser(userId, revision))
+      throw new Error('平台登录状态已改变。');
+
+    // 两榜都必须查询成功并通过校验；查询失败不能当作尚未上榜。
+    return boards
+      .map((board, index) => {
+        if (
+          !board ||
+          board.gameId !== this.gameId ||
+          board.userId !== userId ||
+          board.period !== periods[index]
+        )
+          throw new Error('排行榜数据与当前游戏、账号或周期不一致。');
+        if (!board.settings?.enabled || board.settings.direction !== 'DESC')
+          throw new Error('请启用排行榜并配置为高分优先。');
+        if (board.myEntry === null) return true;
+        const entry = board.myEntry;
+        if (
+          !entry ||
+          entry.userId !== userId ||
+          !Number.isSafeInteger(entry.score) ||
+          entry.score < 0 ||
+          entry.score > 1_000_000_000_000
+        )
+          throw new Error('个人排行榜成绩不正确。');
+        return score > entry.score;
+      })
+      .some(Boolean);
+  }
+
   async submitScore(
     score: number,
     runId: string,
     userId: string,
+    revision = this.authRevision,
   ): Promise<void> {
-    if (!this.connected || this.user?.id !== userId)
+    if (!this.isCurrentUser(userId, revision))
       throw new Error('平台登录状态已改变。');
     await this.sdk.submitScore(score, { runId });
   }
@@ -86,6 +142,8 @@ export class RiverPlatform {
 /** 每个结算页拥有一个提交任务；离开页面后不再补交或重试。 */
 export class RunSubmission {
   submitted = false;
+  private completed = false;
+  private submissionAttempted = false;
   private active = true;
   private started = false;
   private ownerId?: string;
@@ -126,7 +184,7 @@ export class RunSubmission {
   }
 
   submit(): Promise<void> {
-    if (!this.active || !this.eligible || this.submitted || this.attempts >= 3)
+    if (!this.active || !this.eligible || this.completed || this.attempts >= 3)
       return Promise.resolve();
     this.pending ??= this.send().finally(() => {
       this.pending = undefined;
@@ -142,9 +200,36 @@ export class RunSubmission {
         return;
       // 第一次尝试后固定成绩所属账号，账号切换不能把同局成绩交给别人。
       this.ownerId ??= user.id;
+      const revision = this.platform.identityRevision;
       this.attempts += 1;
-      await this.platform.submitScore(this.score, this.runId, this.ownerId);
+      if (!this.submissionAttempted) {
+        const improved = await this.platform.shouldSubmitScore(
+          this.score,
+          this.ownerId,
+          revision,
+        );
+        if (
+          !this.active ||
+          !this.platform.isCurrentUser(this.ownerId, revision)
+        )
+          return;
+        if (!improved) {
+          this.completed = true;
+          return;
+        }
+      }
+      if (!this.active || !this.platform.isCurrentUser(this.ownerId, revision))
+        return;
+      // 已发出的提交可能写入成功但响应超时，重试原 UUID 确认，不再比较同分。
+      this.submissionAttempted = true;
+      await this.platform.submitScore(
+        this.score,
+        this.runId,
+        this.ownerId,
+        revision,
+      );
       this.submitted = true;
+      this.completed = true;
     } catch {
       // GET_USER 失败也消耗一次尝试，避免重试期间无限请求身份。
       if (this.attempts === previousAttempts) this.attempts += 1;
