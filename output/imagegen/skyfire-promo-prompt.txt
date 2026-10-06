@@ -1,5 +1,5 @@
 Generator: built-in image_gen
-Final export: JPEG, 960x540, quality 90, 196122 bytes
+Final export: JPEG, 960x540, quality 61, 97664 bytes (below 100000 bytes). Recompressed with System.Drawing.
 
 Use case: ads-marketing.
 Create one finished horizontal 16:9 promotional banner for the existing Chinese browser arcade aircraft shooter game 天火计划 (Project Skyfire). Compose for a final 960x540 JPG, all lettering must stay legible at this modest resolution.

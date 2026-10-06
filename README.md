@@ -224,6 +224,19 @@ pnpm format:check
 
 ## 部署
 
+### 平台宣传素材
+
+轮播图和缩略图保存在项目静态资源目录 `public/promo/`，Vite 开发服务可直接访问，`pnpm build` 会自动将它们复制到 `dist/promo/`。平台后台可上传这些 JPG，或在支持图片 URL 时填写部署地址。
+
+| 用途   | 源码文件                                     | 尺寸              | 文件大小                    |
+| ------ | -------------------------------------------- | ----------------- | --------------------------- |
+| 轮播图 | `public/promo/skyfire-carousel-1440x480.jpg` | 1440 × 480（3:1） | 98,506 字节（小于 100 KB） |
+| 缩略图 | `public/promo/skyfire-thumbnail-960x540.jpg` | 960 × 540（16:9） | 97,664 字节（小于 100 KB） |
+
+图片地址为游戏部署目录下的 `promo/skyfire-carousel-1440x480.jpg` 和 `promo/skyfire-thumbnail-960x540.jpg`。例如游戏部署在 `/games/skyfire/` 时，轮播图路径为 `/games/skyfire/promo/skyfire-carousel-1440x480.jpg`。`output/imagegen/` 保留生成记录，发布时使用 `public/promo/` 中的文件。
+
+### 发布游戏包
+
 先完成游戏平台 `deploy/build.bat` 的打包，再运行本游戏的 `pnpm build`，将 `dist` **目录内容**复制到游戏平台 `deploy/games/skyfire/`，形成 `skyfire/index.html` 和 `skyfire/assets/`。然后随游戏平台部署包上传，复用平台已有静态服务：独立来源的入口为 `/skyfire/`，已有同域托管配置的入口为 `https://game.riverxutools.com/games/skyfire/`。
 
 游戏平台构建脚本会用 `/MIR` 从 `examples` 重建 `deploy/games`，因此**再次运行平台打包后，必须重新复制游戏产物**。本游戏不修改平台打包脚本，也不将游戏产物写入平台前端目录。
